@@ -111,6 +111,22 @@
   .btn:hover{background:var(--green); color:#111;}
   .btn:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
 
+  .btn-primary{
+    background:var(--green);
+    color:#111;
+    font-weight:700;
+  }
+  .btn-primary:hover{background:var(--green-dim); color:#eee;}
+
+  .btn-ghost{
+    border-color:var(--panel-edge);
+    color:var(--text-dim);
+  }
+  .btn-ghost:hover{background:var(--panel-edge); color:var(--text);}
+
+  .btn-row{display:flex; gap:8px;}
+  .btn-row .btn{flex:1;}
+
   /* Signature: the progress bar as a sawn plank / cut-line */
   .hero{
     background:var(--panel);
@@ -208,6 +224,41 @@
   }
   .save-note.show{color:var(--green);}
 
+  /* Auftrag log */
+  .log-list{
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  .log-list li{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    padding:8px 0;
+    border-bottom:1px solid var(--panel-edge);
+  }
+  .log-list li:last-child{border-bottom:none;}
+  .log-idx{color:var(--text-dim); margin-right:8px;}
+  .log-stk{color:var(--green); font-weight:700;}
+  .log-time{color:var(--text-dim); font-size:11px;}
+  .log-empty{
+    color:var(--text-dim);
+    font-size:13px;
+    text-align:center;
+    padding:8px 0;
+  }
+  .undo-btn{
+    background:none;
+    border:none;
+    color:var(--red);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    cursor:pointer;
+    padding:2px 4px;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .fill{transition:none;}
   }
@@ -260,25 +311,28 @@
   </div>
 
   <div class="card">
-    <h2>Aktueller Stand</h2>
+    <h2>Aktueller Auftrag</h2>
     <div class="row">
       <div class="field">
         <label for="jetzt">Uhrzeit</label>
         <input type="time" id="jetzt">
       </div>
       <div class="field">
-        <label for="stkAktuell">Stück fertig</label>
+        <label for="stkAktuell">Stück in diesem Auftrag</label>
         <input type="number" id="stkAktuell" value="0" min="0">
       </div>
     </div>
     <div class="row" style="margin-top:12px;">
       <button class="btn" id="jetztBtn">Jetzt einsetzen</button>
     </div>
+    <div class="row btn-row" style="margin-top:8px;">
+      <button class="btn btn-primary" id="fertigBtn">Auftrag fertig ✓</button>
+    </div>
   </div>
 
   <div class="hero">
     <div class="hero-top">
-      <span class="hero-label">Soll erreicht</span>
+      <span class="hero-label">Soll erreicht (Schicht gesamt)</span>
       <span class="hero-sub" id="sollLabel">– / – Stk</span>
     </div>
     <div class="pct-display" id="pctMain">–<span class="unit">%</span></div>
@@ -299,6 +353,13 @@
     <div class="proj" id="projText">Zeit und Stückzahl eingeben für Hochrechnung.</div>
   </div>
 
+  <div class="card">
+    <h2>Fertige Aufträge heute <span id="gesamtHeute" style="color:var(--green); text-transform:none; letter-spacing:0;"></span></h2>
+    <ul class="log-list" id="logList">
+      <li class="log-empty" id="logEmpty">Noch keine Aufträge abgeschlossen.</li>
+    </ul>
+  </div>
+
   <div class="save-note" id="saveNote">Werte werden lokal für nächstes Mal gemerkt.</div>
 
 </div>
@@ -307,6 +368,11 @@
 const ids = ['start','end','pause','pausenbeginn','stueckzeit','proPalette','jetzt','stkAktuell'];
 const els = {};
 ids.forEach(id => els[id] = document.getElementById(id));
+
+// Cumulative state for the day: finished orders + running total
+let log = [];       // {stk, zeit}
+let gesamtStk = 0;   // Summe aller abgeschlossenen Aufträge
+let todayKey = null;
 
 function toMinutes(t){
   if(!t) return null;
@@ -320,6 +386,11 @@ function fmtMin(mins){
   return (h>0? h+'h ' : '') + m + 'min';
 }
 
+function dateKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 async function loadSaved(){
   try{
     const r = await window.storage.get('schicht-defaults');
@@ -330,6 +401,17 @@ async function loadSaved(){
       });
     }
   }catch(e){ /* no saved defaults yet */ }
+
+  todayKey = dateKey();
+  try{
+    const r = await window.storage.get('auftraege-' + todayKey);
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      log = d.log || [];
+      gesamtStk = d.gesamtStk || 0;
+    }
+  }catch(e){ /* noch keine Aufträge heute gespeichert */ }
+  renderLog();
 }
 
 async function saveDefaults(){
@@ -343,15 +425,53 @@ async function saveDefaults(){
   };
   try{
     await window.storage.set('schicht-defaults', JSON.stringify(d));
-    const note = document.getElementById('saveNote');
-    note.textContent = 'Gespeichert für nächstes Mal.';
-    note.classList.add('show');
-    clearTimeout(saveDefaults._t);
-    saveDefaults._t = setTimeout(()=>{
-      note.textContent = 'Werte werden lokal für nächstes Mal gemerkt.';
-      note.classList.remove('show');
-    }, 1800);
+    flashSaveNote('Gespeichert für nächstes Mal.');
   }catch(e){ console.error('Speichern fehlgeschlagen', e); }
+}
+
+async function saveLog(){
+  try{
+    await window.storage.set('auftraege-' + todayKey, JSON.stringify({log, gesamtStk}));
+  }catch(e){ console.error('Auftrags-Log speichern fehlgeschlagen', e); }
+}
+
+function flashSaveNote(msg){
+  const note = document.getElementById('saveNote');
+  note.textContent = msg;
+  note.classList.add('show');
+  clearTimeout(flashSaveNote._t);
+  flashSaveNote._t = setTimeout(()=>{
+    note.textContent = 'Werte werden lokal für nächstes Mal gemerkt.';
+    note.classList.remove('show');
+  }, 1800);
+}
+
+function renderLog(){
+  const listEl = document.getElementById('logList');
+  const gesamtEl = document.getElementById('gesamtHeute');
+  gesamtEl.textContent = log.length ? `— ${gesamtStk} Stk gesamt` : '';
+
+  if(log.length === 0){
+    listEl.innerHTML = '<li class="log-empty" id="logEmpty">Noch keine Aufträge abgeschlossen.</li>';
+    return;
+  }
+  listEl.innerHTML = log.map((e, i) => `
+    <li>
+      <span><span class="log-idx">#${i+1}</span><span class="log-stk">${e.stk} Stk</span></span>
+      <span class="log-time">${e.zeit} Uhr <button class="undo-btn" data-idx="${i}" title="Eintrag entfernen">✕</button></span>
+    </li>
+  `).join('');
+
+  listEl.querySelectorAll('.undo-btn').forEach(btn=>{
+    btn.addEventListener('click', (ev)=>{
+      const idx = parseInt(ev.target.getAttribute('data-idx'));
+      gesamtStk -= log[idx].stk;
+      log.splice(idx,1);
+      renderLog();
+      saveLog();
+      calc();
+    });
+  });
 }
 
 function setNowTime(){
@@ -362,57 +482,70 @@ function setNowTime(){
   calc();
 }
 
+function auftragFertig(){
+  const stk = parseFloat(els.stkAktuell.value) || 0;
+  if(stk <= 0) return;
+  const zeit = els.jetzt.value || '--:--';
+  log.push({stk, zeit});
+  gesamtStk += stk;
+  els.stkAktuell.value = 0;
+  renderLog();
+  saveLog();
+  setNowTime(); // aktualisiert Uhrzeit + rechnet neu
+  flashSaveNote(`Auftrag mit ${stk} Stk verbucht.`);
+}
+
 function calc(){
   const start = toMinutes(els.start.value);
   const end = toMinutes(els.end.value);
   const pause = parseFloat(els.pause.value) || 0;
   const stueckzeit = parseFloat(els.stueckzeit.value);
   const proPalette = parseFloat(els.proPalette.value) || 1;
-  const stkAktuell = parseFloat(els.stkAktuell.value) || 0;
+  const stkAktuell = parseFloat(els.stkAktuell.value) || 0; // laufender Auftrag, noch nicht verbucht
   const jetzt = toMinutes(els.jetzt.value);
 
   if(start===null || end===null || !stueckzeit || stueckzeit<=0){
     return;
   }
 
-  const totalClock = end - start; // gesamte Schichtdauer (Uhrzeit)
-  const workMinutes = totalClock - pause; // reine Arbeitszeit
+  const totalClock = end - start;
+  const workMinutes = totalClock - pause;
   if(workMinutes <= 0) return;
 
   const sollStk = workMinutes / stueckzeit;
   const sollPaletten = sollStk / proPalette;
 
-  document.getElementById('sollLabel').textContent = `${stkAktuell.toFixed(0)} / ${sollStk.toFixed(0)} Stk`;
+  // Gesamtproduktion bisher = verbuchte Aufträge + laufender (noch nicht verbuchter) Auftrag
+  const totalStk = gesamtStk + stkAktuell;
+
+  document.getElementById('sollLabel').textContent = `${totalStk.toFixed(0)} / ${sollStk.toFixed(0)} Stk`;
   document.getElementById('statPaletten').textContent = sollPaletten.toFixed(1);
 
-  const pctSoll = (stkAktuell / sollStk) * 100;
+  const pctSoll = (totalStk / sollStk) * 100;
   document.getElementById('pctMain').innerHTML = `${pctSoll.toFixed(1)}<span class="unit">%</span>`;
   document.getElementById('fillBar').style.width = Math.min(pctSoll,100) + '%';
-  document.getElementById('fillBar').style.background = pctSoll >= 100
+  document.getElementById('fillBar').style.background = pctSoll >= 70
     ? 'repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 8px, var(--green-dim) 8px, var(--green-dim) 9px)'
-    : (pctSoll >= 70
-        ? 'repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 8px, var(--green-dim) 8px, var(--green-dim) 9px)'
-        : 'repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 8px, #8a5f1c 8px, #8a5f1c 9px)');
+    : 'repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 8px, #8a5f1c 8px, #8a5f1c 9px)';
 
   // Hochrechnung, wenn "jetzt" gesetzt ist
   if(jetzt !== null && jetzt > start){
-    const elapsedClock = jetzt - start; // seit Start vergangene Uhrzeit
+    const elapsedClock = jetzt - start;
 
-    // Exakte Pausenlogik: Pause beginnt zu fixer Uhrzeit (pausenbeginn) und dauert `pause` Minuten.
     const pausenbeginn = toMinutes(els.pausenbeginn.value);
     let pauseTaken = 0;
     if(pausenbeginn !== null){
       if(jetzt <= pausenbeginn){
-        pauseTaken = 0; // Pause liegt noch in der Zukunft
+        pauseTaken = 0;
       } else if(jetzt >= pausenbeginn + pause){
-        pauseTaken = pause; // Pause bereits komplett vorbei
+        pauseTaken = pause;
       } else {
-        pauseTaken = jetzt - pausenbeginn; // mitten in der Pause
+        pauseTaken = jetzt - pausenbeginn;
       }
     }
     const elapsedWork = Math.max(elapsedClock - pauseTaken, 0.01);
 
-    const rate = stkAktuell / elapsedWork; // Stk pro Arbeitsminute
+    const rate = totalStk / elapsedWork; // Stk pro Arbeitsminute, basierend auf Gesamtproduktion
     document.getElementById('statRate').textContent = rate.toFixed(3) + ' Stk/min';
 
     const projectedTotal = rate * workMinutes;
@@ -429,10 +562,11 @@ function calc(){
 }
 
 ids.forEach(id => els[id].addEventListener('input', calc));
-['start','end','pause','stueckzeit','proPalette'].forEach(id => {
+['start','end','pause','pausenbeginn','stueckzeit','proPalette'].forEach(id => {
   els[id].addEventListener('change', saveDefaults);
 });
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
+document.getElementById('fertigBtn').addEventListener('click', auftragFertig);
 
 // Pausenbeginn automatisch je nach Schichtart vorschlagen (Früh < 12:00 -> 11:30, sonst 19:00),
 // aber nur wenn der Nutzer den Wert nicht schon manuell auf etwas anderes gesetzt hat.
@@ -446,7 +580,7 @@ els.start.addEventListener('input', ()=>{
 });
 
 loadSaved().then(()=>{
-  if(els.pausenbeginn.value){ pausenbeginnManuell = true; } // gespeicherter/voreingestellter Wert gilt als bewusst gesetzt
+  if(els.pausenbeginn.value){ pausenbeginnManuell = true; }
   setNowTime();
 });
 </script>
