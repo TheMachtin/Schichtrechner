@@ -268,7 +268,7 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Akkord · Biohort</div>
+    <div class="eyebrow">Akkord · Biohort · v2</div>
     <h1>Schichtrechner</h1>
   </header>
 
@@ -360,6 +360,13 @@
     </ul>
   </div>
 
+  <div class="card">
+    <h2>Verlauf</h2>
+    <ul class="log-list" id="verlaufList">
+      <li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>
+    </ul>
+  </div>
+
   <div class="save-note" id="saveNote">Werte werden lokal für nächstes Mal gemerkt.</div>
 
 </div>
@@ -373,6 +380,7 @@ ids.forEach(id => els[id] = document.getElementById(id));
 let log = [];       // {stk, zeit}
 let gesamtStk = 0;   // Summe aller abgeschlossenen Aufträge
 let todayKey = null;
+let verlauf = {};   // { 'YYYY-MM-DD': {gesamtStk, count} } – Index über alle Tage
 
 function toMinutes(t){
   if(!t) return null;
@@ -389,6 +397,11 @@ function fmtMin(mins){
 function dateKey(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function fmtDate(key){
+  const [y,m,d] = key.split('-');
+  return `${d}.${m}.${y}`;
 }
 
 async function loadSaved(){
@@ -412,6 +425,14 @@ async function loadSaved(){
     }
   }catch(e){ /* noch keine Aufträge heute gespeichert */ }
   renderLog();
+
+  try{
+    const r = await window.storage.get('schicht-verlauf');
+    if(r && r.value){
+      verlauf = JSON.parse(r.value) || {};
+    }
+  }catch(e){ /* noch kein Verlauf gespeichert */ }
+  renderVerlauf();
 }
 
 async function saveDefaults(){
@@ -433,6 +454,16 @@ async function saveLog(){
   try{
     await window.storage.set('auftraege-' + todayKey, JSON.stringify({log, gesamtStk}));
   }catch(e){ console.error('Auftrags-Log speichern fehlgeschlagen', e); }
+
+  if(log.length > 0){
+    verlauf[todayKey] = {gesamtStk, count: log.length};
+  } else {
+    delete verlauf[todayKey];
+  }
+  try{
+    await window.storage.set('schicht-verlauf', JSON.stringify(verlauf));
+  }catch(e){ console.error('Verlauf speichern fehlgeschlagen', e); }
+  renderVerlauf();
 }
 
 function flashSaveNote(msg){
@@ -472,6 +503,24 @@ function renderLog(){
       calc();
     });
   });
+}
+
+function renderVerlauf(){
+  const listEl = document.getElementById('verlaufList');
+  const tage = Object.keys(verlauf).filter(k => k !== todayKey).sort().reverse();
+
+  if(tage.length === 0){
+    listEl.innerHTML = '<li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>';
+    return;
+  }
+  listEl.innerHTML = tage.map(key => {
+    const t = verlauf[key];
+    return `
+    <li>
+      <span>${fmtDate(key)}</span>
+      <span class="log-time"><span class="log-stk">${t.gesamtStk} Stk</span> · ${t.count} Auftr.</span>
+    </li>`;
+  }).join('');
 }
 
 function setNowTime(){
