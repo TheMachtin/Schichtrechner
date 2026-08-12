@@ -127,6 +127,8 @@
   .btn-row{display:flex; gap:8px;}
   .btn-row .btn{flex:1;}
 
+  .schicht-btn.active{background:var(--green); color:#111; font-weight:700;}
+
   /* Signature: the progress bar as a sawn plank / cut-line */
   .hero{
     background:var(--panel);
@@ -274,6 +276,10 @@
 
   <div class="card">
     <h2>Schicht</h2>
+    <div class="row btn-row" style="margin-bottom:14px;">
+      <button type="button" class="btn schicht-btn" id="schichtFruehBtn">Früh</button>
+      <button type="button" class="btn schicht-btn" id="schichtSpaetBtn">Spät</button>
+    </div>
     <div class="row">
       <div class="field">
         <label for="start">Start</label>
@@ -381,6 +387,12 @@ let log = [];       // {stk, zeit}
 let gesamtStk = 0;   // Summe aller abgeschlossenen Aufträge
 let todayKey = null;
 let verlauf = {};   // { 'YYYY-MM-DD': {gesamtStk, count} } – Index über alle Tage
+let schichtart = null; // 'frueh' | 'spaet' | null (manuell)
+
+const SCHICHT_PRESETS = {
+  frueh: {start:'05:48', end:'14:00',  pause:'30', pausenbeginn:'11:30'},
+  spaet: {start:'14:00', end:'22:42', pause:'30', pausenbeginn:'19:00'}
+};
 
 function toMinutes(t){
   if(!t) return null;
@@ -412,8 +424,10 @@ async function loadSaved(){
       ['start','end','pause','pausenbeginn','stueckzeit','proPalette'].forEach(k=>{
         if(d[k] !== undefined) els[k].value = d[k];
       });
+      if(d.schichtart !== undefined) schichtart = d.schichtart;
     }
   }catch(e){ /* no saved defaults yet */ }
+  setActiveSchichtBtn(schichtart);
 
   todayKey = dateKey();
   try{
@@ -442,12 +456,32 @@ async function saveDefaults(){
     pause: els.pause.value,
     pausenbeginn: els.pausenbeginn.value,
     stueckzeit: els.stueckzeit.value,
-    proPalette: els.proPalette.value
+    proPalette: els.proPalette.value,
+    schichtart: schichtart
   };
   try{
     await window.storage.set('schicht-defaults', JSON.stringify(d));
     flashSaveNote('Gespeichert für nächstes Mal.');
   }catch(e){ console.error('Speichern fehlgeschlagen', e); }
+}
+
+function setActiveSchichtBtn(art){
+  document.getElementById('schichtFruehBtn').classList.toggle('active', art === 'frueh');
+  document.getElementById('schichtSpaetBtn').classList.toggle('active', art === 'spaet');
+}
+
+function applySchicht(art){
+  const p = SCHICHT_PRESETS[art];
+  if(!p) return;
+  els.start.value = p.start;
+  els.end.value = p.end;
+  els.pause.value = p.pause;
+  els.pausenbeginn.value = p.pausenbeginn;
+  pausenbeginnManuell = true;
+  schichtart = art;
+  setActiveSchichtBtn(art);
+  calc();
+  saveDefaults();
 }
 
 async function saveLog(){
@@ -616,6 +650,17 @@ ids.forEach(id => els[id].addEventListener('input', calc));
 });
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
 document.getElementById('fertigBtn').addEventListener('click', auftragFertig);
+document.getElementById('schichtFruehBtn').addEventListener('click', ()=>applySchicht('frueh'));
+document.getElementById('schichtSpaetBtn').addEventListener('click', ()=>applySchicht('spaet'));
+
+// Manuelle Änderung an Start/Ende/Pause löst den Früh/Spät-Umschalter, da die Werte
+// dann nicht mehr zwingend einem der beiden Presets entsprechen.
+['start','end','pause'].forEach(id => {
+  els[id].addEventListener('input', ()=>{
+    schichtart = null;
+    setActiveSchichtBtn(null);
+  });
+});
 
 // Pausenbeginn automatisch je nach Schichtart vorschlagen (Früh < 12:00 -> 11:30, sonst 19:00),
 // aber nur wenn der Nutzer den Wert nicht schon manuell auf etwas anderes gesetzt hat.
