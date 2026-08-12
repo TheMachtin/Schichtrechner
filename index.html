@@ -127,6 +127,8 @@
   .btn-row{display:flex; gap:8px;}
   .btn-row .btn{flex:1;}
 
+  .schicht-btn.active{background:var(--green); color:#111; font-weight:700;}
+
   /* Signature: the progress bar as a sawn plank / cut-line */
   .hero{
     background:var(--panel);
@@ -268,12 +270,16 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Akkord · Biohort</div>
+    <div class="eyebrow">Akkord · Biohort · v2</div>
     <h1>Schichtrechner</h1>
   </header>
 
   <div class="card">
     <h2>Schicht</h2>
+    <div class="row btn-row" style="margin-bottom:14px;">
+      <button type="button" class="btn schicht-btn" id="schichtFruehBtn">Früh</button>
+      <button type="button" class="btn schicht-btn" id="schichtSpaetBtn">Spät</button>
+    </div>
     <div class="row">
       <div class="field">
         <label for="start">Start</label>
@@ -360,6 +366,13 @@
     </ul>
   </div>
 
+  <div class="card">
+    <h2>Verlauf</h2>
+    <ul class="log-list" id="verlaufList">
+      <li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>
+    </ul>
+  </div>
+
   <div class="save-note" id="saveNote">Werte werden lokal für nächstes Mal gemerkt.</div>
 
 </div>
@@ -373,6 +386,13 @@ ids.forEach(id => els[id] = document.getElementById(id));
 let log = [];       // {stk, zeit}
 let gesamtStk = 0;   // Summe aller abgeschlossenen Aufträge
 let todayKey = null;
+let verlauf = {};   // { 'YYYY-MM-DD': {gesamtStk, count} } – Index über alle Tage
+let schichtart = null; // 'frueh' | 'spaet' | null (manuell)
+
+const SCHICHT_PRESETS = {
+  frueh: {start:'05:48', end:'14:00',  pause:'30', pausenbeginn:'11:30'},
+  spaet: {start:'14:00', end:'22:42', pause:'30', pausenbeginn:'19:00'}
+};
 
 function toMinutes(t){
   if(!t) return null;
@@ -391,6 +411,11 @@ function dateKey(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function fmtDate(key){
+  const [y,m,d] = key.split('-');
+  return `${d}.${m}.${y}`;
+}
+
 async function loadSaved(){
   try{
     const r = await window.storage.get('schicht-defaults');
@@ -399,8 +424,10 @@ async function loadSaved(){
       ['start','end','pause','pausenbeginn','stueckzeit','proPalette'].forEach(k=>{
         if(d[k] !== undefined) els[k].value = d[k];
       });
+      if(d.schichtart !== undefined) schichtart = d.schichtart;
     }
   }catch(e){ /* no saved defaults yet */ }
+  setActiveSchichtBtn(schichtart);
 
   todayKey = dateKey();
   try{
@@ -412,6 +439,14 @@ async function loadSaved(){
     }
   }catch(e){ /* noch keine Aufträge heute gespeichert */ }
   renderLog();
+
+  try{
+    const r = await window.storage.get('schicht-verlauf');
+    if(r && r.value){
+      verlauf = JSON.parse(r.value) || {};
+    }
+  }catch(e){ /* noch kein Verlauf gespeichert */ }
+  renderVerlauf();
 }
 
 async function saveDefaults(){
@@ -421,7 +456,8 @@ async function saveDefaults(){
     pause: els.pause.value,
     pausenbeginn: els.pausenbeginn.value,
     stueckzeit: els.stueckzeit.value,
-    proPalette: els.proPalette.value
+    proPalette: els.proPalette.value,
+    schichtart: schichtart
   };
   try{
     await window.storage.set('schicht-defaults', JSON.stringify(d));
@@ -429,10 +465,39 @@ async function saveDefaults(){
   }catch(e){ console.error('Speichern fehlgeschlagen', e); }
 }
 
+function setActiveSchichtBtn(art){
+  document.getElementById('schichtFruehBtn').classList.toggle('active', art === 'frueh');
+  document.getElementById('schichtSpaetBtn').classList.toggle('active', art === 'spaet');
+}
+
+function applySchicht(art){
+  const p = SCHICHT_PRESETS[art];
+  if(!p) return;
+  els.start.value = p.start;
+  els.end.value = p.end;
+  els.pause.value = p.pause;
+  els.pausenbeginn.value = p.pausenbeginn;
+  pausenbeginnManuell = true;
+  schichtart = art;
+  setActiveSchichtBtn(art);
+  calc();
+  saveDefaults();
+}
+
 async function saveLog(){
   try{
     await window.storage.set('auftraege-' + todayKey, JSON.stringify({log, gesamtStk}));
   }catch(e){ console.error('Auftrags-Log speichern fehlgeschlagen', e); }
+
+  if(log.length > 0){
+    verlauf[todayKey] = {gesamtStk, count: log.length};
+  } else {
+    delete verlauf[todayKey];
+  }
+  try{
+    await window.storage.set('schicht-verlauf', JSON.stringify(verlauf));
+  }catch(e){ console.error('Verlauf speichern fehlgeschlagen', e); }
+  renderVerlauf();
 }
 
 function flashSaveNote(msg){
@@ -472,6 +537,24 @@ function renderLog(){
       calc();
     });
   });
+}
+
+function renderVerlauf(){
+  const listEl = document.getElementById('verlaufList');
+  const tage = Object.keys(verlauf).filter(k => k !== todayKey).sort().reverse();
+
+  if(tage.length === 0){
+    listEl.innerHTML = '<li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>';
+    return;
+  }
+  listEl.innerHTML = tage.map(key => {
+    const t = verlauf[key];
+    return `
+    <li>
+      <span>${fmtDate(key)}</span>
+      <span class="log-time"><span class="log-stk">${t.gesamtStk} Stk</span> · ${t.count} Auftr.</span>
+    </li>`;
+  }).join('');
 }
 
 function setNowTime(){
@@ -567,6 +650,17 @@ ids.forEach(id => els[id].addEventListener('input', calc));
 });
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
 document.getElementById('fertigBtn').addEventListener('click', auftragFertig);
+document.getElementById('schichtFruehBtn').addEventListener('click', ()=>applySchicht('frueh'));
+document.getElementById('schichtSpaetBtn').addEventListener('click', ()=>applySchicht('spaet'));
+
+// Manuelle Änderung an Start/Ende/Pause löst den Früh/Spät-Umschalter, da die Werte
+// dann nicht mehr zwingend einem der beiden Presets entsprechen.
+['start','end','pause'].forEach(id => {
+  els[id].addEventListener('input', ()=>{
+    schichtart = null;
+    setActiveSchichtBtn(null);
+  });
+});
 
 // Pausenbeginn automatisch je nach Schichtart vorschlagen (Früh < 12:00 -> 11:30, sonst 19:00),
 // aber nur wenn der Nutzer den Wert nicht schon manuell auf etwas anderes gesetzt hat.
