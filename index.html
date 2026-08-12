@@ -32,18 +32,22 @@
   .wrap{width:100%; max-width:480px;}
 
   header{margin-bottom:22px;}
-  .eyebrow{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.18em;
-    color:var(--green);
-    text-transform:uppercase;
-  }
   h1{
-    margin:4px 0 0;
+    margin:0;
     font-size:24px;
     font-weight:700;
     letter-spacing:-0.01em;
+  }
+
+  .hint{
+    background:rgba(217,155,43,0.12);
+    border:1px solid var(--amber);
+    color:var(--amber);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:12.5px;
+    line-height:1.4;
+    margin-bottom:14px;
   }
 
   .card{
@@ -270,9 +274,10 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Akkord · Biohort · v2</div>
     <h1>Schichtrechner</h1>
   </header>
+
+  <div class="hint" id="offHoursHint" style="display:none;"></div>
 
   <div class="card">
     <h2>Schicht</h2>
@@ -309,10 +314,6 @@
         <label for="stueckzeit">Stückzeit (min)</label>
         <input type="number" id="stueckzeit" value="6.15" step="0.01" min="0">
       </div>
-      <div class="field">
-        <label for="proPalette">Stk / Palette</label>
-        <input type="number" id="proPalette" value="8" min="1">
-      </div>
     </div>
   </div>
 
@@ -328,12 +329,19 @@
         <input type="number" id="stkAktuell" value="0" min="0">
       </div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label for="stkOffen">Noch offen (Auftrag)</label>
+        <input type="number" id="stkOffen" value="0" min="0">
+      </div>
+    </div>
     <div class="row" style="margin-top:12px;">
       <button class="btn" id="jetztBtn">Jetzt einsetzen</button>
     </div>
     <div class="row btn-row" style="margin-top:8px;">
       <button class="btn btn-primary" id="fertigBtn">Auftrag fertig ✓</button>
     </div>
+    <div class="proj" id="auftragProjText">Offene Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.</div>
   </div>
 
   <div class="hero">
@@ -348,8 +356,8 @@
     </div>
     <div class="stats">
       <div class="stat">
-        <div class="stat-label">Paletten (Soll)</div>
-        <div class="stat-value" id="statPaletten">–</div>
+        <div class="stat-label">Verbleibend (Soll)</div>
+        <div class="stat-value" id="statVerbleibend">–</div>
       </div>
       <div class="stat">
         <div class="stat-label">Rate gerade</div>
@@ -378,7 +386,7 @@
 </div>
 
 <script>
-const ids = ['start','end','pause','pausenbeginn','stueckzeit','proPalette','jetzt','stkAktuell'];
+const ids = ['start','end','pause','pausenbeginn','stueckzeit','jetzt','stkAktuell','stkOffen'];
 const els = {};
 ids.forEach(id => els[id] = document.getElementById(id));
 
@@ -406,6 +414,44 @@ function fmtMin(mins){
   return (h>0? h+'h ' : '') + m + 'min';
 }
 
+function fmtClock(mins){
+  const total = Math.round(mins);
+  const h = String(Math.floor((total%1440+1440)%1440/60)).padStart(2,'0');
+  const m = String(((total%60)+60)%60).padStart(2,'0');
+  return `${h}:${m}`;
+}
+
+// Uhrzeit nach `workMins` reiner Arbeitszeit ab `fromClock`, unter Berücksichtigung
+// einer noch bevorstehenden oder laufenden Pause (Pausenbeginn + Dauer in Minuten).
+function clockAfterWork(fromClock, workMins, pausenbeginn, pauseLen){
+  if(pausenbeginn === null || pauseLen <= 0){
+    return fromClock + workMins;
+  }
+  const pauseEnd = pausenbeginn + pauseLen;
+  if(fromClock >= pauseEnd){
+    return fromClock + workMins; // Pause schon vorbei
+  }
+  if(fromClock >= pausenbeginn){
+    // mitten in der Pause: erst Pause zu Ende, dann Arbeit
+    return pauseEnd + workMins;
+  }
+  const bisPause = pausenbeginn - fromClock;
+  if(workMins <= bisPause){
+    return fromClock + workMins; // fertig, bevor die Pause beginnt
+  }
+  return fromClock + workMins + pauseLen; // Arbeit überspannt die Pause
+}
+
+// Schicht anhand der echten Uhrzeit erraten (Früh-/Spät-Fenster aus SCHICHT_PRESETS).
+function detectSchicht(nowClock){
+  for(const art of ['frueh','spaet']){
+    const p = SCHICHT_PRESETS[art];
+    const s = toMinutes(p.start), e = toMinutes(p.end);
+    if(nowClock >= s && nowClock < e) return art;
+  }
+  return null;
+}
+
 function dateKey(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -421,13 +467,22 @@ async function loadSaved(){
     const r = await window.storage.get('schicht-defaults');
     if(r && r.value){
       const d = JSON.parse(r.value);
-      ['start','end','pause','pausenbeginn','stueckzeit','proPalette'].forEach(k=>{
+      ['start','end','pause','pausenbeginn','stueckzeit'].forEach(k=>{
         if(d[k] !== undefined) els[k].value = d[k];
       });
       if(d.schichtart !== undefined) schichtart = d.schichtart;
     }
   }catch(e){ /* no saved defaults yet */ }
-  setActiveSchichtBtn(schichtart);
+
+  // Schicht anhand der echten aktuellen Uhrzeit vorschlagen. Liegt "jetzt" außerhalb
+  // beider Schichtfenster (z.B. nachts), wird die zuletzt gespeicherte Auswahl beibehalten.
+  const nowClock = toMinutes(`${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`);
+  const detected = detectSchicht(nowClock);
+  if(detected){
+    applySchicht(detected);
+  } else {
+    setActiveSchichtBtn(schichtart);
+  }
 
   todayKey = dateKey();
   try{
@@ -456,7 +511,6 @@ async function saveDefaults(){
     pause: els.pause.value,
     pausenbeginn: els.pausenbeginn.value,
     stueckzeit: els.stueckzeit.value,
-    proPalette: els.proPalette.value,
     schichtart: schichtart
   };
   try{
@@ -572,6 +626,7 @@ function auftragFertig(){
   log.push({stk, zeit});
   gesamtStk += stk;
   els.stkAktuell.value = 0;
+  els.stkOffen.value = 0;
   renderLog();
   saveLog();
   setNowTime(); // aktualisiert Uhrzeit + rechnet neu
@@ -583,9 +638,12 @@ function calc(){
   const end = toMinutes(els.end.value);
   const pause = parseFloat(els.pause.value) || 0;
   const stueckzeit = parseFloat(els.stueckzeit.value);
-  const proPalette = parseFloat(els.proPalette.value) || 1;
   const stkAktuell = parseFloat(els.stkAktuell.value) || 0; // laufender Auftrag, noch nicht verbucht
+  const stkOffen = parseFloat(els.stkOffen.value) || 0;     // im laufenden Auftrag noch offen
   const jetzt = toMinutes(els.jetzt.value);
+  const pausenbeginn = toMinutes(els.pausenbeginn.value);
+
+  updateOffHoursHint(start, end, jetzt);
 
   if(start===null || end===null || !stueckzeit || stueckzeit<=0){
     return;
@@ -596,13 +654,12 @@ function calc(){
   if(workMinutes <= 0) return;
 
   const sollStk = workMinutes / stueckzeit;
-  const sollPaletten = sollStk / proPalette;
 
   // Gesamtproduktion bisher = verbuchte Aufträge + laufender (noch nicht verbuchter) Auftrag
   const totalStk = gesamtStk + stkAktuell;
 
   document.getElementById('sollLabel').textContent = `${totalStk.toFixed(0)} / ${sollStk.toFixed(0)} Stk`;
-  document.getElementById('statPaletten').textContent = sollPaletten.toFixed(1);
+  document.getElementById('statVerbleibend').textContent = Math.max(sollStk - totalStk, 0).toFixed(0) + ' Stk';
 
   const pctSoll = (totalStk / sollStk) * 100;
   document.getElementById('pctMain').innerHTML = `${pctSoll.toFixed(1)}<span class="unit">%</span>`;
@@ -611,11 +668,12 @@ function calc(){
     ? 'repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 8px, var(--green-dim) 8px, var(--green-dim) 9px)'
     : 'repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 8px, #8a5f1c 8px, #8a5f1c 9px)';
 
-  // Hochrechnung, wenn "jetzt" gesetzt ist
-  if(jetzt !== null && jetzt > start){
+  let rate = null; // Stk pro Arbeitsminute, basierend auf Gesamtproduktion
+
+  // Hochrechnung, wenn "jetzt" innerhalb der Schicht liegt
+  if(jetzt !== null && jetzt > start && jetzt < end){
     const elapsedClock = jetzt - start;
 
-    const pausenbeginn = toMinutes(els.pausenbeginn.value);
     let pauseTaken = 0;
     if(pausenbeginn !== null){
       if(jetzt <= pausenbeginn){
@@ -628,7 +686,7 @@ function calc(){
     }
     const elapsedWork = Math.max(elapsedClock - pauseTaken, 0.01);
 
-    const rate = totalStk / elapsedWork; // Stk pro Arbeitsminute, basierend auf Gesamtproduktion
+    rate = totalStk / elapsedWork;
     document.getElementById('statRate').textContent = rate.toFixed(3) + ' Stk/min';
 
     const projectedTotal = rate * workMinutes;
@@ -640,12 +698,55 @@ function calc(){
       `Vergangene Arbeitszeit: ${fmtMin(elapsedWork)} von ${fmtMin(workMinutes)}.`;
   } else {
     document.getElementById('statRate').textContent = '–';
-    document.getElementById('projText').textContent = 'Uhrzeit "Jetzt" eingeben für Hochrechnung.';
+    document.getElementById('projText').textContent = jetzt === null
+      ? 'Uhrzeit "Jetzt" eingeben für Hochrechnung.'
+      : (jetzt <= start
+          ? 'Schicht hat laut Uhrzeit noch nicht begonnen.'
+          : 'Schicht ist laut Uhrzeit bereits vorbei.');
+  }
+
+  updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause);
+}
+
+function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause){
+  const el = document.getElementById('auftragProjText');
+  if(stkOffen <= 0){
+    el.innerHTML = 'Offene Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.';
+    return;
+  }
+  if(!rate || !isFinite(rate) || rate <= 0 || jetzt === null){
+    el.innerHTML = 'Noch keine Rate berechenbar – Uhrzeit "Jetzt" einsetzen, sobald produziert wurde.';
+    return;
+  }
+
+  const remainingMin = stkOffen / rate;
+  const fertigUm = clockAfterWork(jetzt, remainingMin, pausenbeginn, pause);
+
+  if(fertigUm <= end){
+    const puffer = end - fertigUm;
+    el.innerHTML = `Bei gleichem Tempo fertig ca. um <b>${fmtClock(fertigUm)} Uhr</b> ` +
+      `→ <span class="big">${fmtMin(puffer)} Puffer</span> bis Schichtende.`;
+  } else {
+    const fehlt = fertigUm - end;
+    // Bei sehr großem Rückstand (mehr als ein Tag) wäre eine Uhrzeit irreführend (Wrap um Mitternacht).
+    const fertigText = (fertigUm - jetzt) < 1440 ? ` (fertig ca. ${fmtClock(fertigUm)} Uhr)` : '';
+    el.innerHTML = `Geht sich bei gleichem Tempo <b>nicht aus</b>: ca. ${fmtMin(fehlt)} zu wenig Zeit${fertigText}.`;
+  }
+}
+
+function updateOffHoursHint(start, end, jetzt){
+  const hint = document.getElementById('offHoursHint');
+  const outside = jetzt !== null && start !== null && end !== null && (jetzt < start || jetzt >= end);
+  if(outside){
+    hint.textContent = `Hinweis: ${els.jetzt.value} Uhr liegt außerhalb der eingetragenen Schichtzeit (${els.start.value}–${els.end.value} Uhr).`;
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
   }
 }
 
 ids.forEach(id => els[id].addEventListener('input', calc));
-['start','end','pause','pausenbeginn','stueckzeit','proPalette'].forEach(id => {
+['start','end','pause','pausenbeginn','stueckzeit'].forEach(id => {
   els[id].addEventListener('change', saveDefaults);
 });
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
