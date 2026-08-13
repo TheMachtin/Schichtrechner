@@ -74,9 +74,9 @@
     color:var(--text-dim);
     font-family:'JetBrains Mono', monospace;
     font-size:11px;
-    letter-spacing:0.06em;
+    letter-spacing:0.04em;
     text-transform:uppercase;
-    padding:10px 6px;
+    padding:10px 4px;
     border-radius:8px;
     cursor:pointer;
   }
@@ -190,7 +190,7 @@
   .btn-row{display:flex; gap:8px;}
   .btn-row .btn{flex:1;}
 
-  .schicht-btn.active{background:var(--green); color:#111; font-weight:700;}
+  .schicht-btn.active, .lang-btn.active{background:var(--green); color:#111; font-weight:700;}
 
   /* Signature: the progress bar as a sawn plank / cut-line */
   .hero{
@@ -207,9 +207,10 @@
     justify-content:space-between;
     align-items:baseline;
     margin-bottom:14px;
+    gap:10px;
   }
   .hero-label{font-size:11px; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-dim);}
-  .hero-sub{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim);}
+  .hero-sub{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim); white-space:nowrap;}
 
   .pct-display{
     font-family:'JetBrains Mono', monospace;
@@ -293,6 +294,7 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:8px;
     font-family:'JetBrains Mono', monospace;
     font-size:12px;
     color:var(--text-dim);
@@ -309,6 +311,7 @@
     font-size:11px;
     cursor:pointer;
     padding:2px 4px;
+    white-space:nowrap;
   }
 
   .log-list{list-style:none; margin:0; padding:0;}
@@ -341,88 +344,88 @@
 
   <header>
     <h1>TAKT</h1>
-    <span class="subtitle">Akkord im Blick</span>
+    <span class="subtitle" data-i18n="subtitle">Akkord im Blick</span>
   </header>
 
   <div class="hint" id="offHoursHint" style="display:none;"></div>
 
   <div class="tabbar" role="tablist">
-    <button type="button" class="tab-btn active" data-tab="schicht">Schicht</button>
-    <button type="button" class="tab-btn" data-tab="auftrag">Auftrag</button>
-    <button type="button" class="tab-btn" data-tab="einstellungen">Einstellungen</button>
+    <button type="button" class="tab-btn active" data-tab="schicht" data-i18n="tabSchicht">Schicht</button>
+    <button type="button" class="tab-btn" data-tab="auftrag" data-i18n="tabAuftrag">Auftrag</button>
+    <button type="button" class="tab-btn" data-tab="einstellungen" data-i18n="tabEinstellungen">Einstellungen</button>
   </div>
 
   <div class="tab-panel active" data-panel="schicht">
 
     <div class="card">
-      <h2>Schicht</h2>
+      <h2 data-i18n="schicht">Schicht</h2>
       <div class="row btn-row" style="margin-bottom:14px;">
-        <button type="button" class="btn schicht-btn" id="schichtFruehBtn">Früh</button>
-        <button type="button" class="btn schicht-btn" id="schichtSpaetBtn">Spät</button>
+        <button type="button" class="btn schicht-btn" id="schichtFruehBtn" data-i18n="frueh">Früh</button>
+        <button type="button" class="btn schicht-btn" id="schichtSpaetBtn" data-i18n="spaet">Spät</button>
       </div>
       <div class="row">
         <div class="field">
-          <label for="start">Start</label>
+          <label for="start" data-i18n="start">Start</label>
           <input type="time" id="start" value="05:48">
         </div>
         <div class="field">
-          <label for="end">Ende</label>
+          <label for="end" data-i18n="ende">Ende</label>
           <input type="time" id="end" value="14:00">
         </div>
       </div>
-      <div class="info-line" id="pauseInfo">Pause: 30 min ab 11:30 Uhr</div>
+      <div class="info-line" id="pauseInfo"></div>
       <input type="hidden" id="pause" value="30">
       <input type="hidden" id="pausenbeginn" value="11:30">
     </div>
 
     <div class="card">
-      <h2>Stückzeit</h2>
+      <h2 data-i18n="stueckzeitTitel">Stückzeit</h2>
       <div class="row">
         <div class="field">
-          <label for="stueckzeit">Minuten pro Stück</label>
+          <label for="stueckzeit" data-i18n="minutenProStueck">Minuten pro Stück</label>
           <input type="text" id="stueckzeit" value="6.15" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Aktueller Auftrag</h2>
+      <h2 data-i18n="aktuellerAuftrag">Aktueller Auftrag</h2>
       <div class="row">
         <div class="field">
-          <label for="jetzt">Uhrzeit <span id="jetztAutoTag" style="color:var(--green);">· läuft mit</span></label>
+          <label for="jetzt"><span data-i18n="uhrzeit">Uhrzeit</span> <span id="jetztAutoTag" style="color:var(--green);" data-i18n="laeuftMit">· läuft mit</span></label>
           <input type="time" id="jetzt">
         </div>
         <div class="field">
-          <label for="stkGesamt">Auftrag gesamt (Stk)</label>
+          <label for="stkGesamt" data-i18n="auftragGesamt">Auftrag gesamt (Stk)</label>
           <input type="number" id="stkGesamt" value="0" min="0" inputmode="numeric">
         </div>
       </div>
       <div class="row">
         <div class="field">
-          <label for="stkAktuell">Davon fertig (Stk)</label>
+          <label for="stkAktuell" data-i18n="davonFertig">Davon fertig (Stk)</label>
           <div class="stepper">
-            <button type="button" class="step-btn" id="stkMinus" aria-label="Ein Stück weniger">−</button>
+            <button type="button" class="step-btn" id="stkMinus" data-i18n-aria="stkMinusLabel">−</button>
             <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
-            <button type="button" class="step-btn" id="stkPlus" aria-label="Ein Stück mehr">+</button>
+            <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
           </div>
         </div>
       </div>
-      <div class="offen-line" id="offenLine">Noch offen: <b>–</b></div>
+      <div class="offen-line" id="offenLine"></div>
       <div class="row btn-row" style="margin-top:12px;">
-        <button class="btn btn-ghost" id="jetztBtn">Uhrzeit jetzt</button>
-        <button class="btn btn-primary" id="fertigBtn">Auftrag fertig ✓</button>
+        <button class="btn btn-ghost" id="jetztBtn" data-i18n="uhrzeitJetzt">Uhrzeit jetzt</button>
+        <button class="btn btn-primary" id="fertigBtn" data-i18n="auftragFertig">Auftrag fertig ✓</button>
       </div>
-      <div class="proj" id="auftragProjText">Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.</div>
+      <div class="proj" id="auftragProjText"></div>
       <div class="heute-line" id="heuteLine" style="display:none;">
-        <span>Heute verbucht: <span class="stk" id="heuteStk">0 Stk</span></span>
-        <button class="undo-btn" id="undoBtn" title="Letzte Buchung rückgängig">✕ letzte Buchung</button>
+        <span><span data-i18n="heuteVerbucht">Heute verbucht:</span> <span class="stk" id="heuteStk"></span></span>
+        <button class="undo-btn" id="undoBtn" data-i18n="letzteBuchung">✕ letzte Buchung</button>
       </div>
     </div>
 
     <div class="hero">
       <div class="hero-top">
-        <span class="hero-label">Soll erreicht (Schicht gesamt)</span>
-        <span class="hero-sub" id="sollLabel">– / – Stk</span>
+        <span class="hero-label" data-i18n="sollErreicht">Soll erreicht (Schicht gesamt)</span>
+        <span class="hero-sub" id="sollLabel">–</span>
       </div>
       <div class="pct-display" id="pctMain">–<span class="unit">%</span></div>
       <div class="track">
@@ -431,41 +434,39 @@
       </div>
       <div class="stats">
         <div class="stat">
-          <div class="stat-label">Verbleibend (Soll)</div>
+          <div class="stat-label" data-i18n="verbleibend">Verbleibend (Soll)</div>
           <div class="stat-value" id="statVerbleibend">–</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Rate gerade</div>
-          <div class="stat-value amber" id="statRate">– Stk/min</div>
+          <div class="stat-label" data-i18n="rateGerade">Rate gerade</div>
+          <div class="stat-value amber" id="statRate">–</div>
         </div>
       </div>
-      <div class="proj" id="projText">Zeit und Stückzahl eingeben für Hochrechnung.</div>
+      <div class="proj" id="projText"></div>
     </div>
 
     <div class="card">
-      <h2>Verlauf</h2>
-      <ul class="log-list" id="verlaufList">
-        <li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>
-      </ul>
+      <h2 data-i18n="verlauf">Verlauf</h2>
+      <ul class="log-list" id="verlaufList"></ul>
     </div>
 
   </div>
 
   <div class="tab-panel" data-panel="auftrag">
     <div class="card">
-      <h2>Auftrag planen</h2>
+      <h2 data-i18n="auftragPlanen">Auftrag planen</h2>
       <div class="row">
         <div class="field">
-          <label for="planGesamt">Gesamtstückzahl</label>
+          <label for="planGesamt" data-i18n="gesamtstueckzahl">Gesamtstückzahl</label>
           <input type="number" id="planGesamt" min="0" inputmode="numeric">
         </div>
         <div class="field">
-          <label for="planStueckzeit">Stückzeit (min)</label>
+          <label for="planStueckzeit" data-i18n="stueckzeitMin">Stückzeit (min)</label>
           <input type="text" id="planStueckzeit" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
         </div>
       </div>
-      <div class="proj" id="planProjText">Gesamtstückzahl und Stückzeit eingeben.</div>
-      <div class="info-line" style="margin-top:10px;">
+      <div class="proj" id="planProjText"></div>
+      <div class="info-line" style="margin-top:10px;" data-i18n="planHinweis">
         Beide Werte sind mit dem Tab „Schicht“ verknüpft – einmal eingeben genügt.
       </div>
     </div>
@@ -473,63 +474,254 @@
 
   <div class="tab-panel" data-panel="einstellungen">
     <div class="card">
-      <h2>Frühschicht</h2>
+      <h2 data-i18n="sprache">Sprache</h2>
+      <div class="row btn-row">
+        <button type="button" class="btn lang-btn" data-lang="de">Deutsch</button>
+        <button type="button" class="btn lang-btn" data-lang="cs">Čeština</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 data-i18n="fruehschicht">Frühschicht</h2>
       <div class="row">
         <div class="field">
-          <label for="setFruehStart">Start</label>
+          <label for="setFruehStart" data-i18n="start">Start</label>
           <input type="time" id="setFruehStart">
         </div>
         <div class="field">
-          <label for="setFruehEnde">Ende</label>
+          <label for="setFruehEnde" data-i18n="ende">Ende</label>
           <input type="time" id="setFruehEnde">
         </div>
       </div>
       <div class="row">
         <div class="field">
-          <label for="setFruehPause">Pause (min)</label>
+          <label for="setFruehPause" data-i18n="pauseMin">Pause (min)</label>
           <input type="number" id="setFruehPause" min="0" inputmode="numeric">
         </div>
         <div class="field">
-          <label for="setFruehPausenbeginn">Pause um</label>
+          <label for="setFruehPausenbeginn" data-i18n="pauseUm">Pause um</label>
           <input type="time" id="setFruehPausenbeginn">
         </div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Spätschicht</h2>
+      <h2 data-i18n="spaetschicht">Spätschicht</h2>
       <div class="row">
         <div class="field">
-          <label for="setSpaetStart">Start</label>
+          <label for="setSpaetStart" data-i18n="start">Start</label>
           <input type="time" id="setSpaetStart">
         </div>
         <div class="field">
-          <label for="setSpaetEnde">Ende</label>
+          <label for="setSpaetEnde" data-i18n="ende">Ende</label>
           <input type="time" id="setSpaetEnde">
         </div>
       </div>
       <div class="row">
         <div class="field">
-          <label for="setSpaetPause">Pause (min)</label>
+          <label for="setSpaetPause" data-i18n="pauseMin">Pause (min)</label>
           <input type="number" id="setSpaetPause" min="0" inputmode="numeric">
         </div>
         <div class="field">
-          <label for="setSpaetPausenbeginn">Pause um</label>
+          <label for="setSpaetPausenbeginn" data-i18n="pauseUm">Pause um</label>
           <input type="time" id="setSpaetPausenbeginn">
         </div>
       </div>
     </div>
 
-    <div class="hint hint-info">
+    <div class="hint hint-info" data-i18n="einstellungenHinweis">
       Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.
     </div>
   </div>
 
-  <div class="save-note" id="saveNote">Werte werden lokal für nächstes Mal gemerkt.</div>
+  <div class="save-note" id="saveNote"></div>
 
 </div>
 
 <script>
+// ---------------------------------------------------------------------------
+// Sprachen. Platzhalter in geschweiften Klammern werden von t() ersetzt; die
+// Satzstellung darf sich pro Sprache frei unterscheiden.
+// ---------------------------------------------------------------------------
+const TEXTS = {
+  de: {
+    subtitle: 'Akkord im Blick',
+    tabSchicht: 'Schicht',
+    tabAuftrag: 'Auftrag',
+    tabEinstellungen: 'Einstellungen',
+
+    schicht: 'Schicht',
+    frueh: 'Früh',
+    spaet: 'Spät',
+    start: 'Start',
+    ende: 'Ende',
+    stueckzeitTitel: 'Stückzeit',
+    minutenProStueck: 'Minuten pro Stück',
+    aktuellerAuftrag: 'Aktueller Auftrag',
+    uhrzeit: 'Uhrzeit',
+    laeuftMit: '· läuft mit',
+    auftragGesamt: 'Auftrag gesamt (Stk)',
+    davonFertig: 'Davon fertig (Stk)',
+    stkPlusLabel: 'Ein Stück mehr',
+    stkMinusLabel: 'Ein Stück weniger',
+    uhrzeitJetzt: 'Uhrzeit jetzt',
+    auftragFertig: 'Auftrag fertig ✓',
+    heuteVerbucht: 'Heute verbucht:',
+    letzteBuchung: '✕ letzte Buchung',
+    sollErreicht: 'Soll erreicht (Schicht gesamt)',
+    verbleibend: 'Verbleibend (Soll)',
+    rateGerade: 'Rate gerade',
+    verlauf: 'Verlauf',
+    auftragPlanen: 'Auftrag planen',
+    gesamtstueckzahl: 'Gesamtstückzahl',
+    stueckzeitMin: 'Stückzeit (min)',
+    planHinweis: 'Beide Werte sind mit dem Tab „Schicht“ verknüpft – einmal eingeben genügt.',
+    sprache: 'Sprache',
+    fruehschicht: 'Frühschicht',
+    spaetschicht: 'Spätschicht',
+    pauseMin: 'Pause (min)',
+    pauseUm: 'Pause um',
+    einstellungenHinweis: 'Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.',
+
+    stk: 'Stk',
+    stkProMin: '{rate} Stk/min',
+    stunde: 'h',
+    minute: 'min',
+    sollPaar: '{ist} / {soll} Stk',
+    verbleibendWert: '{stk} Stk',
+    offenLeer: 'Noch offen: <b>–</b>',
+    offenWert: 'Noch offen: <b>{stk} Stk</b>',
+    pauseInfo: 'Pause: {min} min ab {ab} Uhr',
+    pauseInfoOhneZeit: 'Pause: {min} min',
+    heuteStk: '{stk} Stk',
+
+    speicherHinweis: 'Werte werden lokal für nächstes Mal gemerkt.',
+    gespeichert: 'Gespeichert für nächstes Mal.',
+    einstellungenGespeichert: 'Einstellungen gespeichert.',
+    auftragVerbucht: 'Auftrag mit {stk} Stk verbucht.',
+    buchungEntfernt: 'Buchung über {stk} Stk entfernt.',
+
+    verlaufLeer: 'Noch keine vorherigen Tage gespeichert.',
+    verlaufZeile: '{stk} Stk · {n} Auftr.',
+
+    projLeer: 'Zeit und Stückzahl eingeben für Hochrechnung.',
+    projKeineZeit: 'Uhrzeit eingeben für Hochrechnung.',
+    projVorSchicht: 'Schicht hat laut Uhrzeit noch nicht begonnen.',
+    projNachSchicht: 'Schicht ist laut Uhrzeit bereits vorbei.',
+    projHochrechnung: 'Bei gleichem Tempo bis <b>{ende} Uhr</b>: ca. <span class="big">{stk} Stk</span> → <span class="big">{pct}%</span> vom Soll.<br>Vergangene Arbeitszeit: {gearbeitet} von {gesamt}.',
+
+    auftragLeer: 'Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.',
+    auftragKeineRate: 'Noch keine Rate berechenbar – sobald die ersten Stück fertig sind, kommt die Prognose.',
+    auftragPasst: 'Bei gleichem Tempo fertig ca. um <b>{zeit} Uhr</b> → <span class="big">{puffer} Puffer</span> bis Schichtende.',
+    auftragPasstNicht: 'Geht sich bei gleichem Tempo <b>nicht aus</b>: ca. {fehlt} zu wenig Zeit{fertig}.',
+    auftragFertigUm: ' (fertig ca. {zeit} Uhr)',
+
+    offHours: 'Hinweis: {jetzt} Uhr liegt außerhalb der eingetragenen Schichtzeit ({start}–{ende} Uhr).',
+
+    planLeer: 'Gesamtstückzahl und Stückzeit eingeben.',
+    planKeineSchicht: 'Schichtzeiten fehlen (Tab „Schicht“).',
+    planAbJetzt: 'ab jetzt',
+    planAbBeginn: 'ab Schichtbeginn',
+    planPasst: 'Benötigt <b>{dauer}</b> ({bezug}) → passt in die Schicht: fertig ca. um <span class="big">{zeit} Uhr</span> ({puffer} Puffer).',
+    planPasstNicht: 'Benötigt <b>{dauer}</b> ({bezug}) → geht sich in dieser Schicht <b>nicht aus</b>: ca. {fehlt} zu wenig Zeit{fertig}.'
+  },
+
+  cs: {
+    subtitle: 'Výkon pod kontrolou',
+    tabSchicht: 'Směna',
+    tabAuftrag: 'Zakázka',
+    tabEinstellungen: 'Nastavení',
+
+    schicht: 'Směna',
+    frueh: 'Ranní',
+    spaet: 'Odpolední',
+    start: 'Začátek',
+    ende: 'Konec',
+    stueckzeitTitel: 'Čas na kus',
+    minutenProStueck: 'Minut na kus',
+    aktuellerAuftrag: 'Aktuální zakázka',
+    uhrzeit: 'Čas',
+    laeuftMit: '· běží',
+    auftragGesamt: 'Zakázka celkem (ks)',
+    davonFertig: 'Z toho hotovo (ks)',
+    stkPlusLabel: 'O kus více',
+    stkMinusLabel: 'O kus méně',
+    uhrzeitJetzt: 'Aktuální čas',
+    auftragFertig: 'Zakázka hotová ✓',
+    heuteVerbucht: 'Dnes zapsáno:',
+    letzteBuchung: '✕ poslední zápis',
+    sollErreicht: 'Splnění normy (celá směna)',
+    verbleibend: 'Zbývá do normy',
+    rateGerade: 'Aktuální tempo',
+    verlauf: 'Historie',
+    auftragPlanen: 'Plánování zakázky',
+    gesamtstueckzahl: 'Celkový počet kusů',
+    stueckzeitMin: 'Čas na kus (min)',
+    planHinweis: 'Obě hodnoty jsou propojené se záložkou „Směna“ – stačí zadat jednou.',
+    sprache: 'Jazyk',
+    fruehschicht: 'Ranní směna',
+    spaetschicht: 'Odpolední směna',
+    pauseMin: 'Přestávka (min)',
+    pauseUm: 'Přestávka v',
+    einstellungenHinweis: 'Tyto časy určují automatické rozpoznání ranní/odpolední směny a přepínač v záložce „Směna“.',
+
+    stk: 'ks',
+    stkProMin: '{rate} ks/min',
+    stunde: 'h',
+    minute: 'min',
+    sollPaar: '{ist} / {soll} ks',
+    verbleibendWert: '{stk} ks',
+    offenLeer: 'Zbývá: <b>–</b>',
+    offenWert: 'Zbývá: <b>{stk} ks</b>',
+    pauseInfo: 'Přestávka: {min} min od {ab}',
+    pauseInfoOhneZeit: 'Přestávka: {min} min',
+    heuteStk: '{stk} ks',
+
+    speicherHinweis: 'Hodnoty se ukládají pro příště.',
+    gespeichert: 'Uloženo pro příště.',
+    einstellungenGespeichert: 'Nastavení uloženo.',
+    auftragVerbucht: 'Zakázka s {stk} ks zapsána.',
+    buchungEntfernt: 'Zápis {stk} ks odstraněn.',
+
+    verlaufLeer: 'Zatím nejsou uloženy žádné předchozí dny.',
+    verlaufZeile: '{stk} ks · {n} zak.',
+
+    projLeer: 'Zadejte čas a počet kusů pro výpočet.',
+    projKeineZeit: 'Zadejte aktuální čas pro výpočet.',
+    projVorSchicht: 'Směna podle času ještě nezačala.',
+    projNachSchicht: 'Směna podle času už skončila.',
+    projHochrechnung: 'Při stejném tempu do <b>{ende}</b>: cca <span class="big">{stk} ks</span> → <span class="big">{pct} %</span> normy.<br>Odpracováno: {gearbeitet} z {gesamt}.',
+
+    auftragLeer: 'Zadejte počet kusů zakázky pro odhad, zda se stihne.',
+    auftragKeineRate: 'Tempo zatím nelze spočítat – odhad se zobrazí po prvních hotových kusech.',
+    auftragPasst: 'Při stejném tempu hotovo cca v <b>{zeit}</b> → <span class="big">rezerva {puffer}</span> do konce směny.',
+    auftragPasstNicht: 'Při stejném tempu se <b>nestihne</b>: chybí cca {fehlt}{fertig}.',
+    auftragFertigUm: ' (hotovo cca v {zeit})',
+
+    offHours: 'Upozornění: {jetzt} je mimo zadanou pracovní dobu ({start}–{ende}).',
+
+    planLeer: 'Zadejte celkový počet kusů a čas na kus.',
+    planKeineSchicht: 'Chybí časy směny (záložka „Směna“).',
+    planAbJetzt: 'od teď',
+    planAbBeginn: 'od začátku směny',
+    planPasst: 'Potřeba <b>{dauer}</b> ({bezug}) → vejde se do směny: hotovo cca v <span class="big">{zeit}</span> (rezerva {puffer}).',
+    planPasstNicht: 'Potřeba <b>{dauer}</b> ({bezug}) → do této směny se <b>nevejde</b>: chybí cca {fehlt}{fertig}.'
+  }
+};
+
+let lang = 'de';
+
+function t(key, vars){
+  let s = (TEXTS[lang] && TEXTS[lang][key]) !== undefined ? TEXTS[lang][key] : TEXTS.de[key];
+  if(s === undefined) return key;
+  if(vars){
+    for(const k in vars){
+      s = s.split('{'+k+'}').join(vars[k]);
+    }
+  }
+  return s;
+}
+
 const ids = ['start','end','pause','pausenbeginn','stueckzeit','jetzt','stkAktuell','stkGesamt'];
 const els = {};
 ids.forEach(id => els[id] = document.getElementById(id));
@@ -563,7 +755,9 @@ function toMinutes(t){
 function fmtMin(mins){
   const h = Math.floor(mins/60);
   const m = Math.round(mins%60);
-  return (h>0? h+'h ' : '') + m + 'min';
+  // Deutsch schreibt "2h 12min" zusammen, Tschechisch trennt mit Leerzeichen.
+  const sep = lang === 'cs' ? ' ' : '';
+  return (h>0 ? h+sep+t('stunde')+' ' : '') + m + sep + t('minute');
 }
 
 function fmtClock(mins){
@@ -619,6 +813,33 @@ function fmtDate(key){
   return `${d}.${m}.${y}`;
 }
 
+// Alle statisch beschrifteten Elemente neu setzen und danach die berechneten
+// Texte über calc() erneuern.
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>{
+    el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  });
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  document.getElementById('saveNote').textContent = t('speicherHinweis');
+  renderHeute();
+  renderVerlauf();
+  calc();
+}
+
+async function setLang(next){
+  lang = next;
+  applyLang();
+  try{
+    await window.storage.set('app-sprache', lang);
+  }catch(e){ console.error('Sprache speichern fehlgeschlagen', e); }
+}
+
 function fillSettingsInputs(){
   document.getElementById('setFruehStart').value = SCHICHT_PRESETS.frueh.start;
   document.getElementById('setFruehEnde').value = SCHICHT_PRESETS.frueh.end;
@@ -645,7 +866,7 @@ async function saveSettingsFromInputs(){
   };
   try{
     await window.storage.set('schicht-einstellungen', JSON.stringify(SCHICHT_PRESETS));
-    flashSaveNote('Einstellungen gespeichert.');
+    flashSaveNote(t('einstellungenGespeichert'));
   }catch(e){ console.error('Einstellungen speichern fehlgeschlagen', e); }
 
   // Wirkt sich sofort auf die aktive Schicht aus, falls diese gerade bearbeitet wurde.
@@ -653,6 +874,15 @@ async function saveSettingsFromInputs(){
 }
 
 async function loadSaved(){
+  try{
+    const r = await window.storage.get('app-sprache');
+    if(r && r.value && TEXTS[r.value]){
+      lang = r.value;
+    } else if(typeof navigator !== 'undefined' && /^cs/i.test(navigator.language || '')){
+      lang = 'cs'; // beim ersten Start der Handy-Sprache folgen
+    }
+  }catch(e){ /* Standardsprache verwenden */ }
+
   try{
     const r = await window.storage.get('schicht-einstellungen');
     if(r && r.value){
@@ -698,7 +928,6 @@ async function loadSaved(){
     }
   }catch(e){ /* noch keine Aufträge heute gespeichert */ }
   syncPlanFromSchicht();
-  renderHeute();
 
   try{
     const r = await window.storage.get('schicht-verlauf');
@@ -706,7 +935,8 @@ async function loadSaved(){
       verlauf = JSON.parse(r.value) || {};
     }
   }catch(e){ /* noch kein Verlauf gespeichert */ }
-  renderVerlauf();
+
+  applyLang();
 }
 
 async function saveDefaults(){
@@ -718,7 +948,7 @@ async function saveDefaults(){
   };
   try{
     await window.storage.set('schicht-defaults', JSON.stringify(d));
-    flashSaveNote('Gespeichert für nächstes Mal.');
+    flashSaveNote(t('gespeichert'));
   }catch(e){ console.error('Speichern fehlgeschlagen', e); }
 }
 
@@ -767,14 +997,14 @@ function flashSaveNote(msg){
   note.classList.add('show');
   clearTimeout(flashSaveNote._t);
   flashSaveNote._t = setTimeout(()=>{
-    note.textContent = 'Werte werden lokal für nächstes Mal gemerkt.';
+    note.textContent = t('speicherHinweis');
     note.classList.remove('show');
   }, 1800);
 }
 
 function renderHeute(){
   const line = document.getElementById('heuteLine');
-  document.getElementById('heuteStk').textContent = `${gesamtStk} Stk`;
+  document.getElementById('heuteStk').textContent = t('heuteStk', {stk: gesamtStk});
   line.style.display = log.length ? 'flex' : 'none';
 }
 
@@ -785,7 +1015,7 @@ function undoLetzte(){
   renderHeute();
   saveLog();
   calc();
-  flashSaveNote(`Buchung über ${letzte.stk} Stk entfernt.`);
+  flashSaveNote(t('buchungEntfernt', {stk: letzte.stk}));
 }
 
 function renderVerlauf(){
@@ -793,15 +1023,15 @@ function renderVerlauf(){
   const tage = Object.keys(verlauf).filter(k => k !== todayKey).sort().reverse();
 
   if(tage.length === 0){
-    listEl.innerHTML = '<li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>';
+    listEl.innerHTML = `<li class="log-empty">${t('verlaufLeer')}</li>`;
     return;
   }
   listEl.innerHTML = tage.map(key => {
-    const t = verlauf[key];
+    const e = verlauf[key];
     return `
     <li>
       <span>${fmtDate(key)}</span>
-      <span class="log-time"><span class="log-stk">${t.gesamtStk} Stk</span> · ${t.count} Auftr.</span>
+      <span class="log-time">${t('verlaufZeile', {stk: `<span class="log-stk">${e.gesamtStk}</span>`, n: e.count})}</span>
     </li>`;
   }).join('');
 }
@@ -825,7 +1055,7 @@ function auftragFertig(){
   renderHeute();
   saveLog();
   setNowTime(); // aktualisiert Uhrzeit + rechnet neu
-  flashSaveNote(`Auftrag mit ${stk} Stk verbucht.`);
+  flashSaveNote(t('auftragVerbucht', {stk}));
 }
 
 function calc(){
@@ -857,8 +1087,10 @@ function calc(){
   // Gesamtproduktion bisher = verbuchte Aufträge + laufender (noch nicht verbuchter) Auftrag
   const totalStk = gesamtStk + stkAktuell;
 
-  document.getElementById('sollLabel').textContent = `${totalStk.toFixed(0)} / ${sollStk.toFixed(0)} Stk`;
-  document.getElementById('statVerbleibend').textContent = Math.max(sollStk - totalStk, 0).toFixed(0) + ' Stk';
+  document.getElementById('sollLabel').textContent =
+    t('sollPaar', {ist: totalStk.toFixed(0), soll: sollStk.toFixed(0)});
+  document.getElementById('statVerbleibend').textContent =
+    t('verbleibendWert', {stk: Math.max(sollStk - totalStk, 0).toFixed(0)});
 
   const pctSoll = (totalStk / sollStk) * 100;
   document.getElementById('pctMain').innerHTML = `${pctSoll.toFixed(1)}<span class="unit">%</span>`;
@@ -886,22 +1118,23 @@ function calc(){
     const elapsedWork = Math.max(elapsedClock - pauseTaken, 0.01);
 
     rate = totalStk / elapsedWork;
-    document.getElementById('statRate').textContent = rate.toFixed(3) + ' Stk/min';
+    document.getElementById('statRate').textContent = t('stkProMin', {rate: rate.toFixed(3)});
 
     const projectedTotal = rate * workMinutes;
     const projectedPct = (projectedTotal / sollStk) * 100;
 
-    document.getElementById('projText').innerHTML =
-      `Bei gleichem Tempo bis <b>${els.end.value} Uhr</b>: ca. <span class="big">${projectedTotal.toFixed(0)} Stk</span> ` +
-      `→ <span class="big">${projectedPct.toFixed(0)}%</span> vom Soll.<br>` +
-      `Vergangene Arbeitszeit: ${fmtMin(elapsedWork)} von ${fmtMin(workMinutes)}.`;
+    document.getElementById('projText').innerHTML = t('projHochrechnung', {
+      ende: els.end.value,
+      stk: projectedTotal.toFixed(0),
+      pct: projectedPct.toFixed(0),
+      gearbeitet: fmtMin(elapsedWork),
+      gesamt: fmtMin(workMinutes)
+    });
   } else {
     document.getElementById('statRate').textContent = '–';
     document.getElementById('projText').textContent = jetzt === null
-      ? 'Uhrzeit "Jetzt" eingeben für Hochrechnung.'
-      : (jetzt <= start
-          ? 'Schicht hat laut Uhrzeit noch nicht begonnen.'
-          : 'Schicht ist laut Uhrzeit bereits vorbei.');
+      ? t('projKeineZeit')
+      : (jetzt <= start ? t('projVorSchicht') : t('projNachSchicht'));
   }
 
   updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause);
@@ -909,28 +1142,25 @@ function calc(){
 }
 
 function updateOffenLine(stkGesamt, stkOffen){
-  const el = document.getElementById('offenLine');
-  el.innerHTML = stkGesamt > 0
-    ? `Noch offen: <b>${stkOffen.toFixed(0)} Stk</b>`
-    : 'Noch offen: <b>–</b>';
+  document.getElementById('offenLine').innerHTML = stkGesamt > 0
+    ? t('offenWert', {stk: stkOffen.toFixed(0)})
+    : t('offenLeer');
 }
 
 function updatePauseInfo(pause, pausenbeginn){
-  const el = document.getElementById('pauseInfo');
-  if(!el) return;
-  el.textContent = pausenbeginn !== null
-    ? `Pause: ${pause} min ab ${els.pausenbeginn.value} Uhr`
-    : `Pause: ${pause} min`;
+  document.getElementById('pauseInfo').textContent = pausenbeginn !== null
+    ? t('pauseInfo', {min: pause, ab: els.pausenbeginn.value})
+    : t('pauseInfoOhneZeit', {min: pause});
 }
 
 function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause){
   const el = document.getElementById('auftragProjText');
   if(stkOffen <= 0){
-    el.innerHTML = 'Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.';
+    el.innerHTML = t('auftragLeer');
     return;
   }
   if(!rate || !isFinite(rate) || rate <= 0 || jetzt === null){
-    el.innerHTML = 'Noch keine Rate berechenbar – sobald die ersten Stück fertig sind, kommt die Prognose.';
+    el.innerHTML = t('auftragKeineRate');
     return;
   }
 
@@ -938,14 +1168,14 @@ function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause
   const fertigUm = clockAfterWork(jetzt, remainingMin, pausenbeginn, pause);
 
   if(fertigUm <= end){
-    const puffer = end - fertigUm;
-    el.innerHTML = `Bei gleichem Tempo fertig ca. um <b>${fmtClock(fertigUm)} Uhr</b> ` +
-      `→ <span class="big">${fmtMin(puffer)} Puffer</span> bis Schichtende.`;
+    el.innerHTML = t('auftragPasst', {
+      zeit: fmtClock(fertigUm),
+      puffer: fmtMin(end - fertigUm)
+    });
   } else {
-    const fehlt = fertigUm - end;
     // Bei sehr großem Rückstand (mehr als ein Tag) wäre eine Uhrzeit irreführend (Wrap um Mitternacht).
-    const fertigText = (fertigUm - jetzt) < 1440 ? ` (fertig ca. ${fmtClock(fertigUm)} Uhr)` : '';
-    el.innerHTML = `Geht sich bei gleichem Tempo <b>nicht aus</b>: ca. ${fmtMin(fehlt)} zu wenig Zeit${fertigText}.`;
+    const fertig = (fertigUm - jetzt) < 1440 ? t('auftragFertigUm', {zeit: fmtClock(fertigUm)}) : '';
+    el.innerHTML = t('auftragPasstNicht', {fehlt: fmtMin(fertigUm - end), fertig});
   }
 }
 
@@ -953,7 +1183,11 @@ function updateOffHoursHint(start, end, jetzt){
   const hint = document.getElementById('offHoursHint');
   const outside = jetzt !== null && start !== null && end !== null && (jetzt < start || jetzt >= end);
   if(outside){
-    hint.textContent = `Hinweis: ${els.jetzt.value} Uhr liegt außerhalb der eingetragenen Schichtzeit (${els.start.value}–${els.end.value} Uhr).`;
+    hint.textContent = t('offHours', {
+      jetzt: els.jetzt.value,
+      start: els.start.value,
+      ende: els.end.value
+    });
     hint.style.display = 'block';
   } else {
     hint.style.display = 'none';
@@ -978,7 +1212,7 @@ function updatePlan(){
   const gesamt = parseFloat(document.getElementById('planGesamt').value) || 0;
   const stz = parseNum(document.getElementById('planStueckzeit').value) || 0;
   if(gesamt <= 0 || stz <= 0){
-    el.innerHTML = 'Gesamtstückzahl und Stückzeit eingeben.';
+    el.innerHTML = t('planLeer');
     return;
   }
 
@@ -989,25 +1223,31 @@ function updatePlan(){
   const pausenbeginn = toMinutes(els.pausenbeginn.value);
 
   if(start === null || end === null){
-    el.innerHTML = 'Schichtzeiten fehlen (Tab „Schicht“).';
+    el.innerHTML = t('planKeineSchicht');
     return;
   }
 
   const neededMin = gesamt * stz;
   const jetztImFenster = jetzt !== null && jetzt >= start && jetzt < end;
   const refClock = jetztImFenster ? jetzt : start;
-  const refLabel = jetztImFenster ? 'ab jetzt' : 'ab Schichtbeginn';
+  const bezug = jetztImFenster ? t('planAbJetzt') : t('planAbBeginn');
   const fertigUm = clockAfterWork(refClock, neededMin, pausenbeginn, pause);
 
   if(fertigUm <= end){
-    const puffer = end - fertigUm;
-    el.innerHTML = `Benötigt <b>${fmtMin(neededMin)}</b> (${refLabel}) → passt in die Schicht: ` +
-      `fertig ca. um <span class="big">${fmtClock(fertigUm)} Uhr</span> (${fmtMin(puffer)} Puffer).`;
+    el.innerHTML = t('planPasst', {
+      dauer: fmtMin(neededMin),
+      bezug,
+      zeit: fmtClock(fertigUm),
+      puffer: fmtMin(end - fertigUm)
+    });
   } else {
-    const fehlt = fertigUm - end;
-    const fertigText = (fertigUm - refClock) < 1440 ? ` (fertig ca. ${fmtClock(fertigUm)} Uhr)` : '';
-    el.innerHTML = `Benötigt <b>${fmtMin(neededMin)}</b> (${refLabel}) → geht sich in dieser Schicht ` +
-      `<b>nicht aus</b>: ca. ${fmtMin(fehlt)} zu wenig Zeit${fertigText}.`;
+    const fertig = (fertigUm - refClock) < 1440 ? t('auftragFertigUm', {zeit: fmtClock(fertigUm)}) : '';
+    el.innerHTML = t('planPasstNicht', {
+      dauer: fmtMin(neededMin),
+      bezug,
+      fehlt: fmtMin(fertigUm - end),
+      fertig
+    });
   }
 }
 
@@ -1037,6 +1277,10 @@ function stepStk(delta){
 }
 document.getElementById('stkPlus').addEventListener('click', ()=>stepStk(1));
 document.getElementById('stkMinus').addEventListener('click', ()=>stepStk(-1));
+
+document.querySelectorAll('.lang-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>setLang(btn.dataset.lang));
+});
 
 // Manuelle Änderung an Start/Ende löst den Früh/Spät-Umschalter, da die Werte
 // dann nicht mehr zwingend einem der beiden Presets entsprechen.
