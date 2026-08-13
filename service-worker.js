@@ -1,4 +1,4 @@
-const CACHE = 'schichtrechner-v3';
+const CACHE = 'takt-v4';
 const ASSETS = [
   './',
   './index.html',

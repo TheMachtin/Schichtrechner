@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Schichtrechner</title>
+<title>TAKT</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a1d1a">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Schichtrechner">
+<meta name="apple-mobile-web-app-title" content="TAKT">
 <style>
   @import url('https://cdnjs.cloudflare.com/ajax/libs/JetBrains-Mono/2.304/jetbrains-mono.min.css');
 
@@ -38,13 +39,16 @@
   }
   .wrap{width:100%; max-width:480px;}
 
-  header{margin-bottom:22px;}
+  header{margin-bottom:22px; display:flex; align-items:baseline; gap:10px;}
   h1{
     margin:0;
-    font-size:24px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:26px;
     font-weight:700;
-    letter-spacing:-0.01em;
+    letter-spacing:0.12em;
+    color:var(--green);
   }
+  .subtitle{font-size:12px; color:var(--text-dim);}
 
   .hint{
     background:rgba(217,155,43,0.12);
@@ -128,7 +132,30 @@
     outline-offset:1px;
   }
 
+  /* Stückzahl mit großen Daumen-Tasten: in der Halle schneller als die Tastatur */
+  .stepper{display:flex; gap:6px;}
+  .stepper input{text-align:center;}
+  .step-btn{
+    flex:0 0 46px;
+    background:#171a15;
+    border:1px solid var(--panel-edge);
+    border-radius:6px;
+    color:var(--green);
+    font-family:'JetBrains Mono', monospace;
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .step-btn:active{background:var(--green); color:#111;}
+
   .info-line{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .offen-line{
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    color:var(--text);
+    margin-top:10px;
+  }
+  .offen-line b{color:var(--green);}
 
   .btn{
     width:100%;
@@ -262,12 +289,29 @@
   }
   .save-note.show{color:var(--green);}
 
-  /* Auftrag log */
-  .log-list{
-    list-style:none;
-    margin:0;
-    padding:0;
+  .heute-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:12px;
+    border-top:1px solid var(--panel-edge);
+    padding-top:10px;
   }
+  .heute-line .stk{color:var(--green); font-weight:700;}
+  .undo-btn{
+    background:none;
+    border:none;
+    color:var(--red);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    cursor:pointer;
+    padding:2px 4px;
+  }
+
+  .log-list{list-style:none; margin:0; padding:0;}
   .log-list li{
     display:flex;
     justify-content:space-between;
@@ -278,7 +322,6 @@
     border-bottom:1px solid var(--panel-edge);
   }
   .log-list li:last-child{border-bottom:none;}
-  .log-idx{color:var(--text-dim); margin-right:8px;}
   .log-stk{color:var(--green); font-weight:700;}
   .log-time{color:var(--text-dim); font-size:11px;}
   .log-empty{
@@ -286,15 +329,6 @@
     font-size:13px;
     text-align:center;
     padding:8px 0;
-  }
-  .undo-btn{
-    background:none;
-    border:none;
-    color:var(--red);
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    cursor:pointer;
-    padding:2px 4px;
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -306,7 +340,8 @@
 <div class="wrap">
 
   <header>
-    <h1>Schichtrechner</h1>
+    <h1>TAKT</h1>
+    <span class="subtitle">Akkord im Blick</span>
   </header>
 
   <div class="hint" id="offHoursHint" style="display:none;"></div>
@@ -341,11 +376,11 @@
     </div>
 
     <div class="card">
-      <h2>Stück</h2>
+      <h2>Stückzeit</h2>
       <div class="row">
         <div class="field">
-          <label for="stueckzeit">Stückzeit (min)</label>
-          <input type="number" id="stueckzeit" value="6.15" step="0.01" min="0">
+          <label for="stueckzeit">Minuten pro Stück</label>
+          <input type="number" id="stueckzeit" value="6.15" step="0.01" min="0" inputmode="decimal">
         </div>
       </div>
     </div>
@@ -354,27 +389,34 @@
       <h2>Aktueller Auftrag</h2>
       <div class="row">
         <div class="field">
-          <label for="jetzt">Uhrzeit</label>
+          <label for="jetzt">Uhrzeit <span id="jetztAutoTag" style="color:var(--green);">· läuft mit</span></label>
           <input type="time" id="jetzt">
         </div>
         <div class="field">
-          <label for="stkAktuell">Stück in diesem Auftrag</label>
-          <input type="number" id="stkAktuell" value="0" min="0">
+          <label for="stkGesamt">Auftrag gesamt (Stk)</label>
+          <input type="number" id="stkGesamt" value="0" min="0" inputmode="numeric">
         </div>
       </div>
       <div class="row">
         <div class="field">
-          <label for="stkOffen">Noch offen (Auftrag)</label>
-          <input type="number" id="stkOffen" value="0" min="0">
+          <label for="stkAktuell">Davon fertig (Stk)</label>
+          <div class="stepper">
+            <button type="button" class="step-btn" id="stkMinus" aria-label="Ein Stück weniger">−</button>
+            <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
+            <button type="button" class="step-btn" id="stkPlus" aria-label="Ein Stück mehr">+</button>
+          </div>
         </div>
       </div>
-      <div class="row" style="margin-top:12px;">
-        <button class="btn" id="jetztBtn">Jetzt einsetzen</button>
-      </div>
-      <div class="row btn-row" style="margin-top:8px;">
+      <div class="offen-line" id="offenLine">Noch offen: <b>–</b></div>
+      <div class="row btn-row" style="margin-top:12px;">
+        <button class="btn btn-ghost" id="jetztBtn">Uhrzeit jetzt</button>
         <button class="btn btn-primary" id="fertigBtn">Auftrag fertig ✓</button>
       </div>
-      <div class="proj" id="auftragProjText">Offene Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.</div>
+      <div class="proj" id="auftragProjText">Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.</div>
+      <div class="heute-line" id="heuteLine" style="display:none;">
+        <span>Heute verbucht: <span class="stk" id="heuteStk">0 Stk</span></span>
+        <button class="undo-btn" id="undoBtn" title="Letzte Buchung rückgängig">✕ letzte Buchung</button>
+      </div>
     </div>
 
     <div class="hero">
@@ -401,13 +443,6 @@
     </div>
 
     <div class="card">
-      <h2>Fertige Aufträge heute <span id="gesamtHeute" style="color:var(--green); text-transform:none; letter-spacing:0;"></span></h2>
-      <ul class="log-list" id="logList">
-        <li class="log-empty" id="logEmpty">Noch keine Aufträge abgeschlossen.</li>
-      </ul>
-    </div>
-
-    <div class="card">
       <h2>Verlauf</h2>
       <ul class="log-list" id="verlaufList">
         <li class="log-empty" id="verlaufEmpty">Noch keine vorherigen Tage gespeichert.</li>
@@ -422,14 +457,17 @@
       <div class="row">
         <div class="field">
           <label for="planGesamt">Gesamtstückzahl</label>
-          <input type="number" id="planGesamt" min="0">
+          <input type="number" id="planGesamt" min="0" inputmode="numeric">
         </div>
         <div class="field">
           <label for="planStueckzeit">Stückzeit (min)</label>
-          <input type="number" id="planStueckzeit" step="0.01" min="0">
+          <input type="number" id="planStueckzeit" step="0.01" min="0" inputmode="decimal">
         </div>
       </div>
       <div class="proj" id="planProjText">Gesamtstückzahl und Stückzeit eingeben.</div>
+      <div class="info-line" style="margin-top:10px;">
+        Beide Werte sind mit dem Tab „Schicht“ verknüpft – einmal eingeben genügt.
+      </div>
     </div>
   </div>
 
@@ -449,7 +487,7 @@
       <div class="row">
         <div class="field">
           <label for="setFruehPause">Pause (min)</label>
-          <input type="number" id="setFruehPause" min="0">
+          <input type="number" id="setFruehPause" min="0" inputmode="numeric">
         </div>
         <div class="field">
           <label for="setFruehPausenbeginn">Pause um</label>
@@ -473,7 +511,7 @@
       <div class="row">
         <div class="field">
           <label for="setSpaetPause">Pause (min)</label>
-          <input type="number" id="setSpaetPause" min="0">
+          <input type="number" id="setSpaetPause" min="0" inputmode="numeric">
         </div>
         <div class="field">
           <label for="setSpaetPausenbeginn">Pause um</label>
@@ -492,7 +530,7 @@
 </div>
 
 <script>
-const ids = ['start','end','pause','pausenbeginn','stueckzeit','jetzt','stkAktuell','stkOffen'];
+const ids = ['start','end','pause','pausenbeginn','stueckzeit','jetzt','stkAktuell','stkGesamt'];
 const els = {};
 ids.forEach(id => els[id] = document.getElementById(id));
 
@@ -502,6 +540,7 @@ let gesamtStk = 0;   // Summe aller abgeschlossenen Aufträge
 let todayKey = null;
 let verlauf = {};   // { 'YYYY-MM-DD': {gesamtStk, count} } – Index über alle Tage
 let schichtart = null; // 'frueh' | 'spaet' | null (manuell)
+let jetztAuto = true;  // Uhrzeit läuft automatisch mit, bis sie manuell geändert wird
 
 const SCHICHT_PRESETS = {
   frueh: {start:'05:48', end:'14:00',  pause:'30', pausenbeginn:'11:30'},
@@ -556,6 +595,11 @@ function detectSchicht(nowClock){
     if(nowClock >= s && nowClock < e) return art;
   }
   return null;
+}
+
+function nowMinutes(){
+  const d = new Date();
+  return d.getHours()*60 + d.getMinutes();
 }
 
 function dateKey(){
@@ -625,8 +669,7 @@ async function loadSaved(){
 
   // Schicht anhand der echten aktuellen Uhrzeit vorschlagen. Liegt "jetzt" außerhalb
   // beider Schichtfenster (z.B. nachts), wird die zuletzt gespeicherte Auswahl beibehalten.
-  const nowClock = toMinutes(`${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`);
-  const detected = detectSchicht(nowClock);
+  const detected = detectSchicht(nowMinutes());
   if(detected){
     applySchicht(detected);
   } else {
@@ -640,9 +683,15 @@ async function loadSaved(){
       const d = JSON.parse(r.value);
       log = d.log || [];
       gesamtStk = d.gesamtStk || 0;
+      // Laufender (noch nicht verbuchter) Auftrag übersteht so einen App-Neustart.
+      if(d.laufend){
+        if(d.laufend.gesamt !== undefined) els.stkGesamt.value = d.laufend.gesamt;
+        if(d.laufend.fertig !== undefined) els.stkAktuell.value = d.laufend.fertig;
+      }
     }
   }catch(e){ /* noch keine Aufträge heute gespeichert */ }
-  renderLog();
+  syncPlanFromSchicht();
+  renderHeute();
 
   try{
     const r = await window.storage.get('schicht-verlauf');
@@ -685,8 +734,13 @@ function applySchicht(art){
 }
 
 async function saveLog(){
+  const payload = {
+    log,
+    gesamtStk,
+    laufend: {gesamt: els.stkGesamt.value, fertig: els.stkAktuell.value}
+  };
   try{
-    await window.storage.set('auftraege-' + todayKey, JSON.stringify({log, gesamtStk}));
+    await window.storage.set('auftraege-' + todayKey, JSON.stringify(payload));
   }catch(e){ console.error('Auftrags-Log speichern fehlgeschlagen', e); }
 
   if(log.length > 0){
@@ -711,32 +765,20 @@ function flashSaveNote(msg){
   }, 1800);
 }
 
-function renderLog(){
-  const listEl = document.getElementById('logList');
-  const gesamtEl = document.getElementById('gesamtHeute');
-  gesamtEl.textContent = log.length ? `— ${gesamtStk} Stk gesamt` : '';
+function renderHeute(){
+  const line = document.getElementById('heuteLine');
+  document.getElementById('heuteStk').textContent = `${gesamtStk} Stk`;
+  line.style.display = log.length ? 'flex' : 'none';
+}
 
-  if(log.length === 0){
-    listEl.innerHTML = '<li class="log-empty" id="logEmpty">Noch keine Aufträge abgeschlossen.</li>';
-    return;
-  }
-  listEl.innerHTML = log.map((e, i) => `
-    <li>
-      <span><span class="log-idx">#${i+1}</span><span class="log-stk">${e.stk} Stk</span></span>
-      <span class="log-time">${e.zeit} Uhr <button class="undo-btn" data-idx="${i}" title="Eintrag entfernen">✕</button></span>
-    </li>
-  `).join('');
-
-  listEl.querySelectorAll('.undo-btn').forEach(btn=>{
-    btn.addEventListener('click', (ev)=>{
-      const idx = parseInt(ev.target.getAttribute('data-idx'));
-      gesamtStk -= log[idx].stk;
-      log.splice(idx,1);
-      renderLog();
-      saveLog();
-      calc();
-    });
-  });
+function undoLetzte(){
+  if(log.length === 0) return;
+  const letzte = log.pop();
+  gesamtStk -= letzte.stk;
+  renderHeute();
+  saveLog();
+  calc();
+  flashSaveNote(`Buchung über ${letzte.stk} Stk entfernt.`);
 }
 
 function renderVerlauf(){
@@ -758,10 +800,9 @@ function renderVerlauf(){
 }
 
 function setNowTime(){
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  els.jetzt.value = `${hh}:${mm}`;
+  els.jetzt.value = fmtClock(nowMinutes());
+  jetztAuto = true;
+  document.getElementById('jetztAutoTag').style.display = '';
   calc();
 }
 
@@ -772,8 +813,9 @@ function auftragFertig(){
   log.push({stk, zeit});
   gesamtStk += stk;
   els.stkAktuell.value = 0;
-  els.stkOffen.value = 0;
-  renderLog();
+  els.stkGesamt.value = 0;
+  syncPlanFromSchicht();
+  renderHeute();
   saveLog();
   setNowTime(); // aktualisiert Uhrzeit + rechnet neu
   flashSaveNote(`Auftrag mit ${stk} Stk verbucht.`);
@@ -785,12 +827,14 @@ function calc(){
   const pause = parseFloat(els.pause.value) || 0;
   const stueckzeit = parseFloat(els.stueckzeit.value);
   const stkAktuell = parseFloat(els.stkAktuell.value) || 0; // laufender Auftrag, noch nicht verbucht
-  const stkOffen = parseFloat(els.stkOffen.value) || 0;     // im laufenden Auftrag noch offen
+  const stkGesamt = parseFloat(els.stkGesamt.value) || 0;   // Gesamtumfang des laufenden Auftrags
+  const stkOffen = Math.max(stkGesamt - stkAktuell, 0);     // ergibt sich, statt separat eingetippt zu werden
   const jetzt = toMinutes(els.jetzt.value);
   const pausenbeginn = toMinutes(els.pausenbeginn.value);
 
   updateOffHoursHint(start, end, jetzt);
   updatePauseInfo(pause, pausenbeginn);
+  updateOffenLine(stkGesamt, stkOffen);
 
   if(start===null || end===null || !stueckzeit || stueckzeit<=0){
     updatePlan();
@@ -857,6 +901,13 @@ function calc(){
   updatePlan();
 }
 
+function updateOffenLine(stkGesamt, stkOffen){
+  const el = document.getElementById('offenLine');
+  el.innerHTML = stkGesamt > 0
+    ? `Noch offen: <b>${stkOffen.toFixed(0)} Stk</b>`
+    : 'Noch offen: <b>–</b>';
+}
+
 function updatePauseInfo(pause, pausenbeginn){
   const el = document.getElementById('pauseInfo');
   if(!el) return;
@@ -868,11 +919,11 @@ function updatePauseInfo(pause, pausenbeginn){
 function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause){
   const el = document.getElementById('auftragProjText');
   if(stkOffen <= 0){
-    el.innerHTML = 'Offene Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.';
+    el.innerHTML = 'Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.';
     return;
   }
   if(!rate || !isFinite(rate) || rate <= 0 || jetzt === null){
-    el.innerHTML = 'Noch keine Rate berechenbar – Uhrzeit "Jetzt" einsetzen, sobald produziert wurde.';
+    el.innerHTML = 'Noch keine Rate berechenbar – sobald die ersten Stück fertig sind, kommt die Prognose.';
     return;
   }
 
@@ -902,16 +953,23 @@ function updateOffHoursHint(start, end, jetzt){
   }
 }
 
-// Zweiter Tab: unabhängige Planungsrechnung für einen Auftrag mit fixer Gesamtstückzahl
-// und Stückzeit – zeigt, ob er sich in der (im Tab "Schicht" hinterlegten) Restschicht ausgeht.
-function updatePlan(){
-  const gesamtEl = document.getElementById('planGesamt');
-  const stzEl = document.getElementById('planStueckzeit');
-  const el = document.getElementById('planProjText');
-  if(!gesamtEl || !stzEl || !el) return;
+// Gesamtstückzahl und Stückzeit gibt es fachlich nur einmal – die Felder in beiden
+// Tabs sind zwei Ansichten auf denselben Wert.
+function syncPlanFromSchicht(){
+  document.getElementById('planGesamt').value = els.stkGesamt.value;
+  document.getElementById('planStueckzeit').value = els.stueckzeit.value;
+}
+function syncSchichtFromPlan(){
+  els.stkGesamt.value = document.getElementById('planGesamt').value;
+  els.stueckzeit.value = document.getElementById('planStueckzeit').value;
+}
 
-  const gesamt = parseFloat(gesamtEl.value) || 0;
-  const stz = parseFloat(stzEl.value) || 0;
+// Zweiter Tab: Planungsrechnung für einen Auftrag mit fixer Gesamtstückzahl und
+// Stückzeit – zeigt, ob er sich in der (im Tab "Schicht" hinterlegten) Restschicht ausgeht.
+function updatePlan(){
+  const el = document.getElementById('planProjText');
+  const gesamt = parseFloat(document.getElementById('planGesamt').value) || 0;
+  const stz = parseFloat(document.getElementById('planStueckzeit').value) || 0;
   if(gesamt <= 0 || stz <= 0){
     el.innerHTML = 'Gesamtstückzahl und Stückzeit eingeben.';
     return;
@@ -950,10 +1008,28 @@ ids.forEach(id => els[id].addEventListener('input', calc));
 ['start','end','stueckzeit'].forEach(id => {
   els[id].addEventListener('change', saveDefaults);
 });
+// Laufenden Auftrag mitspeichern, damit ein App-Neustart mitten in der Schicht nichts kostet.
+['stkAktuell','stkGesamt'].forEach(id => {
+  els[id].addEventListener('change', saveLog);
+});
+['stkGesamt','stueckzeit'].forEach(id => {
+  els[id].addEventListener('input', syncPlanFromSchicht);
+});
+
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
 document.getElementById('fertigBtn').addEventListener('click', auftragFertig);
+document.getElementById('undoBtn').addEventListener('click', undoLetzte);
 document.getElementById('schichtFruehBtn').addEventListener('click', ()=>applySchicht('frueh'));
 document.getElementById('schichtSpaetBtn').addEventListener('click', ()=>applySchicht('spaet'));
+
+function stepStk(delta){
+  const v = Math.max((parseFloat(els.stkAktuell.value) || 0) + delta, 0);
+  els.stkAktuell.value = v;
+  calc();
+  saveLog();
+}
+document.getElementById('stkPlus').addEventListener('click', ()=>stepStk(1));
+document.getElementById('stkMinus').addEventListener('click', ()=>stepStk(-1));
 
 // Manuelle Änderung an Start/Ende löst den Früh/Spät-Umschalter, da die Werte
 // dann nicht mehr zwingend einem der beiden Presets entsprechen.
@@ -964,8 +1040,19 @@ document.getElementById('schichtSpaetBtn').addEventListener('click', ()=>applySc
   });
 });
 
+// Uhrzeit läuft von selbst mit; sobald sie von Hand geändert wird, bleibt sie stehen.
+els.jetzt.addEventListener('input', ()=>{
+  jetztAuto = false;
+  document.getElementById('jetztAutoTag').style.display = 'none';
+});
+setInterval(()=>{ if(jetztAuto) setNowTime(); }, 20000);
+
 ['planGesamt','planStueckzeit'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', updatePlan);
+  document.getElementById(id).addEventListener('input', ()=>{
+    syncSchichtFromPlan();
+    calc();
+  });
+  document.getElementById(id).addEventListener('change', ()=>{ saveDefaults(); saveLog(); });
 });
 
 ['setFruehStart','setFruehEnde','setFruehPause','setFruehPausenbeginn',
@@ -978,7 +1065,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
     const target = btn.dataset.tab;
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.dataset.panel===target));
-    if(target === 'auftrag') updatePlan();
+    if(target === 'auftrag'){ syncPlanFromSchicht(); updatePlan(); }
   });
 });
 

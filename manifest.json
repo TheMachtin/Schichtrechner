@@ -1,6 +1,6 @@
 {
-  "name": "Schichtrechner",
-  "short_name": "Schichtrechner",
+  "name": "TAKT – Akkord im Blick",
+  "short_name": "TAKT",
   "description": "Akkord-Rechner für Schicht, Auftrag und Tagesziel",
   "start_url": "./index.html",
   "scope": "./",
