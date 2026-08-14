@@ -22,9 +22,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Cache-first für die App-Shell, damit die App auch offline (z.B. Werkshalle ohne Empfang) startet.
+// Für die Seite selbst zuerst das Netz fragen, damit eine neue Version sofort
+// ankommt; ohne Empfang (Werkshalle) kommt sie aus dem Cache. Bilder und
+// sonstige Dateien zuerst aus dem Cache, die ändern sich kaum.
 self.addEventListener('fetch', (event) => {
   if(event.request.method !== 'GET') return;
+
+  const istSeite = event.request.mode === 'navigate' ||
+                   event.request.destination === 'document';
+
+  if(istSeite){
+    event.respondWith(
+      fetch(event.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(cache => cache.put(event.request, copy));
+        return res;
+      }).catch(() => caches.match(event.request).then(c => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(cached => {
       if(cached) return cached;

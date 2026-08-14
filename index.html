@@ -629,7 +629,7 @@ const TEXTS = {
     pauseInfoOhneZeit: 'Pause: {min} min',
     heuteStk: '{stk} Stk',
 
-    speicherHinweis: 'Werte werden lokal für nächstes Mal gemerkt.',
+    speicherHinweis: 'Alle Eingaben werden automatisch gespeichert.',
     gespeichert: 'Gespeichert für nächstes Mal.',
     einstellungenGespeichert: 'Einstellungen gespeichert.',
     auftragVerbucht: 'Auftrag mit {stk} Stk verbucht.',
@@ -719,7 +719,7 @@ const TEXTS = {
     pauseInfoOhneZeit: 'Přestávka: {min} min',
     heuteStk: '{stk} ks',
 
-    speicherHinweis: 'Hodnoty se ukládají pro příště.',
+    speicherHinweis: 'Všechny zadané hodnoty se ukládají automaticky.',
     gespeichert: 'Uloženo pro příště.',
     einstellungenGespeichert: 'Nastavení uloženo.',
     auftragVerbucht: 'Zakázka s {stk} ks zapsána.',
@@ -752,6 +752,20 @@ const TEXTS = {
 };
 
 let lang = 'de';
+
+// Persistenz über localStorage. Vorher lief das über window.storage – die gibt
+// es aber nur in der Vorschau-Umgebung, im Browser ist sie undefined, wodurch
+// jeder Speicherversuch still fehlschlug.
+const store = {
+  get(key){
+    try{ return localStorage.getItem(key); }
+    catch(e){ return null; }
+  },
+  set(key, val){
+    try{ localStorage.setItem(key, val); return true; }
+    catch(e){ console.error('Speichern fehlgeschlagen', e); return false; }
+  }
+};
 
 function t(key, vars){
   let s = (TEXTS[lang] && TEXTS[lang][key]) !== undefined ? TEXTS[lang][key] : TEXTS.de[key];
@@ -920,9 +934,7 @@ function applyLang(){
 async function setLang(next){
   lang = next;
   applyLang();
-  try{
-    await window.storage.set('app-sprache', lang);
-  }catch(e){ console.error('Sprache speichern fehlgeschlagen', e); }
+  store.set('app-sprache', lang);
 }
 
 function fillSettingsInputs(){
@@ -952,10 +964,12 @@ function renderKurzpausen(){
     </div>`).join('') || `<div class="log-empty">${t('kpLeer')}</div>`;
 
   box.querySelectorAll('[data-kp]').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
+    const uebernehmen = ()=>{
       KURZPAUSEN[inp.dataset.kp][inp.dataset.kpfeld] = inp.value;
       saveKurzpausen();
-    });
+    };
+    inp.addEventListener('input', uebernehmen);
+    inp.addEventListener('change', uebernehmen);
   });
   box.querySelectorAll('[data-kpdel]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -967,10 +981,7 @@ function renderKurzpausen(){
 }
 
 async function saveKurzpausen(){
-  try{
-    await window.storage.set('kurzpausen', JSON.stringify(KURZPAUSEN));
-    flashSaveNote(t('einstellungenGespeichert'));
-  }catch(e){ console.error('Kurzpausen speichern fehlgeschlagen', e); }
+  store.set('kurzpausen', JSON.stringify(KURZPAUSEN));
   calc();
 }
 
@@ -987,10 +998,7 @@ async function saveSettingsFromInputs(){
     pause: document.getElementById('setSpaetPause').value || SCHICHT_PRESETS.spaet.pause,
     pausenbeginn: document.getElementById('setSpaetPausenbeginn').value || SCHICHT_PRESETS.spaet.pausenbeginn
   };
-  try{
-    await window.storage.set('schicht-einstellungen', JSON.stringify(SCHICHT_PRESETS));
-    flashSaveNote(t('einstellungenGespeichert'));
-  }catch(e){ console.error('Einstellungen speichern fehlgeschlagen', e); }
+  store.set('schicht-einstellungen', JSON.stringify(SCHICHT_PRESETS));
 
   // Wirkt sich sofort auf die aktive Schicht aus, falls diese gerade bearbeitet wurde.
   if(schichtart){ applySchicht(schichtart); } else { calc(); }
@@ -998,18 +1006,18 @@ async function saveSettingsFromInputs(){
 
 async function loadSaved(){
   try{
-    const r = await window.storage.get('app-sprache');
-    if(r && r.value && TEXTS[r.value]){
-      lang = r.value;
+    const r = store.get('app-sprache');
+    if(r && TEXTS[r]){
+      lang = r;
     } else if(typeof navigator !== 'undefined' && /^cs/i.test(navigator.language || '')){
       lang = 'cs'; // beim ersten Start der Handy-Sprache folgen
     }
   }catch(e){ /* Standardsprache verwenden */ }
 
   try{
-    const r = await window.storage.get('schicht-einstellungen');
-    if(r && r.value){
-      const d = JSON.parse(r.value);
+    const r = store.get('schicht-einstellungen');
+    if(r){
+      const d = JSON.parse(r);
       if(d.frueh) SCHICHT_PRESETS.frueh = d.frueh;
       if(d.spaet) SCHICHT_PRESETS.spaet = d.spaet;
     }
@@ -1017,17 +1025,17 @@ async function loadSaved(){
   fillSettingsInputs();
 
   try{
-    const r = await window.storage.get('kurzpausen');
-    if(r && r.value){
-      const d = JSON.parse(r.value);
+    const r = store.get('kurzpausen');
+    if(r){
+      const d = JSON.parse(r);
       if(Array.isArray(d)) KURZPAUSEN = d;
     }
   }catch(e){ /* Standard-Kurzpausen verwenden */ }
 
   try{
-    const r = await window.storage.get('schicht-defaults');
-    if(r && r.value){
-      const d = JSON.parse(r.value);
+    const r = store.get('schicht-defaults');
+    if(r){
+      const d = JSON.parse(r);
       ['start','end','stueckzeit'].forEach(k=>{
         if(d[k] !== undefined) els[k].value = d[k];
       });
@@ -1046,9 +1054,9 @@ async function loadSaved(){
 
   todayKey = dateKey();
   try{
-    const r = await window.storage.get('auftraege-' + todayKey);
-    if(r && r.value){
-      const d = JSON.parse(r.value);
+    const r = store.get('auftraege-' + todayKey);
+    if(r){
+      const d = JSON.parse(r);
       log = d.log || [];
       gesamtStk = d.gesamtStk || 0;
       // Laufender (noch nicht verbuchter) Auftrag übersteht so einen App-Neustart.
@@ -1061,26 +1069,23 @@ async function loadSaved(){
   syncPlanFromSchicht();
 
   try{
-    const r = await window.storage.get('schicht-verlauf');
-    if(r && r.value){
-      verlauf = JSON.parse(r.value) || {};
+    const r = store.get('schicht-verlauf');
+    if(r){
+      verlauf = JSON.parse(r) || {};
     }
   }catch(e){ /* noch kein Verlauf gespeichert */ }
 
   applyLang();
 }
 
-async function saveDefaults(){
+function saveDefaults(){
   const d = {
     start: els.start.value,
     end: els.end.value,
     stueckzeit: els.stueckzeit.value,
     schichtart: schichtart
   };
-  try{
-    await window.storage.set('schicht-defaults', JSON.stringify(d));
-    flashSaveNote(t('gespeichert'));
-  }catch(e){ console.error('Speichern fehlgeschlagen', e); }
+  store.set('schicht-defaults', JSON.stringify(d));
 }
 
 function setActiveSchichtBtn(art){
@@ -1101,25 +1106,34 @@ function applySchicht(art){
   saveDefaults();
 }
 
-async function saveLog(){
+function saveLog(){
   const payload = {
     log,
     gesamtStk,
     laufend: {gesamt: els.stkGesamt.value, fertig: els.stkAktuell.value}
   };
-  try{
-    await window.storage.set('auftraege-' + todayKey, JSON.stringify(payload));
-  }catch(e){ console.error('Auftrags-Log speichern fehlgeschlagen', e); }
+  store.set('auftraege-' + todayKey, JSON.stringify(payload));
 
   if(log.length > 0){
     verlauf[todayKey] = {gesamtStk, count: log.length};
   } else {
     delete verlauf[todayKey];
   }
-  try{
-    await window.storage.set('schicht-verlauf', JSON.stringify(verlauf));
-  }catch(e){ console.error('Verlauf speichern fehlgeschlagen', e); }
+  store.set('schicht-verlauf', JSON.stringify(verlauf));
   renderVerlauf();
+}
+
+// Jede Eingabe landet im Speicher, ohne dass etwas bestätigt werden muss.
+// Kurz gebündelt, damit beim Tippen nicht pro Zeichen geschrieben wird.
+let autoSaveTimer = null;
+function autoSave(){
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(saveAllNow, 250);
+}
+function saveAllNow(){
+  clearTimeout(autoSaveTimer);
+  saveDefaults();
+  saveLog();
 }
 
 function flashSaveNote(msg){
@@ -1385,16 +1399,16 @@ function updatePlan(){
   }
 }
 
-ids.forEach(id => els[id].addEventListener('input', calc));
-['start','end','stueckzeit'].forEach(id => {
-  els[id].addEventListener('change', saveDefaults);
-});
-// Laufenden Auftrag mitspeichern, damit ein App-Neustart mitten in der Schicht nichts kostet.
-['stkAktuell','stkGesamt'].forEach(id => {
-  els[id].addEventListener('change', saveLog);
-});
+// Jede Eingabe rechnet neu und wird sofort gespeichert – nichts muss bestätigt werden.
+ids.forEach(id => els[id].addEventListener('input', ()=>{ calc(); autoSave(); }));
 ['stkGesamt','stueckzeit'].forEach(id => {
   els[id].addEventListener('input', syncPlanFromSchicht);
+});
+// Beim Schließen bzw. Wegwischen der App den letzten Stand sichern, falls die
+// Sammelfrist noch läuft.
+window.addEventListener('pagehide', saveAllNow);
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') saveAllNow();
 });
 
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
@@ -1436,12 +1450,13 @@ setInterval(()=>{ if(jetztAuto) setNowTime(); }, 20000);
   document.getElementById(id).addEventListener('input', ()=>{
     syncSchichtFromPlan();
     calc();
+    autoSave();
   });
-  document.getElementById(id).addEventListener('change', ()=>{ saveDefaults(); saveLog(); });
 });
 
 ['setFruehStart','setFruehEnde','setFruehPause','setFruehPausenbeginn',
  'setSpaetStart','setSpaetEnde','setSpaetPause','setSpaetPausenbeginn'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', saveSettingsFromInputs);
   document.getElementById(id).addEventListener('change', saveSettingsFromInputs);
 });
 
