@@ -388,6 +388,7 @@
           <input type="time" id="end" value="14:00">
         </div>
       </div>
+      <div class="info-line" id="freitagInfo" style="display:none; color:var(--amber);"></div>
       <div class="info-line" id="pauseInfo"></div>
       <input type="hidden" id="pause" value="30">
       <input type="hidden" id="pausenbeginn" value="11:30">
@@ -518,6 +519,12 @@
           <input type="time" id="setFruehPausenbeginn">
         </div>
       </div>
+      <div class="row">
+        <div class="field">
+          <label for="setFruehEndeFreitag" data-i18n="endeFreitag">Ende am Freitag</label>
+          <input type="time" id="setFruehEndeFreitag">
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -540,6 +547,12 @@
         <div class="field">
           <label for="setSpaetPausenbeginn" data-i18n="pauseUm">Pause um</label>
           <input type="time" id="setSpaetPausenbeginn">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="setSpaetEndeFreitag" data-i18n="endeFreitag">Ende am Freitag</label>
+          <input type="time" id="setSpaetEndeFreitag">
         </div>
       </div>
     </div>
@@ -608,6 +621,8 @@ const TEXTS = {
     pauseMin: 'Pause (min)',
     pauseUm: 'Pause um',
     einstellungenHinweis: 'Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.',
+    endeFreitag: 'Ende am Freitag',
+    freitagKurz: 'Freitag: verkürzte Schicht bis {ende} Uhr',
     kurzpausen: 'Bezahlte Kurzpausen',
     kurzpauseHinzufuegen: '+ Kurzpause',
     kurzpausenHinweis: 'Gelten für beide Schichten – es zählt jeweils, was ins Zeitfenster der Schicht fällt.',
@@ -698,6 +713,8 @@ const TEXTS = {
     pauseMin: 'Přestávka (min)',
     pauseUm: 'Přestávka v',
     einstellungenHinweis: 'Tyto časy určují automatické rozpoznání ranní/odpolední směny a přepínač v záložce „Směna“.',
+    endeFreitag: 'Konec v pátek',
+    freitagKurz: 'Pátek: zkrácená směna do {ende}',
     kurzpausen: 'Placené krátké přestávky',
     kurzpauseHinzufuegen: '+ Krátká přestávka',
     kurzpausenHinweis: 'Platí pro obě směny – započítá se vždy to, co spadá do časového okna dané směny.',
@@ -790,10 +807,22 @@ let verlauf = {};   // { 'YYYY-MM-DD': {gesamtStk, count} } – Index über alle
 let schichtart = null; // 'frueh' | 'spaet' | null (manuell)
 let jetztAuto = true;  // Uhrzeit läuft automatisch mit, bis sie manuell geändert wird
 
+// endeFreitag ist optional: leer bedeutet, dass freitags das normale Ende gilt.
 const SCHICHT_PRESETS = {
-  frueh: {start:'05:48', end:'14:00',  pause:'30', pausenbeginn:'11:30'},
-  spaet: {start:'14:00', end:'22:42', pause:'30', pausenbeginn:'19:00'}
+  frueh: {start:'05:48', end:'14:00',  pause:'30', pausenbeginn:'11:30', endeFreitag:''},
+  spaet: {start:'14:00', end:'22:42', pause:'30', pausenbeginn:'19:00', endeFreitag:'19:42'}
 };
+
+function istFreitag(){
+  return new Date().getDay() === 5;
+}
+
+// Das heute gültige Schichtende – freitags ist die Woche wegen der 40 Stunden früher zu Ende.
+function endeFuer(art){
+  const p = SCHICHT_PRESETS[art];
+  if(!p) return null;
+  return (istFreitag() && p.endeFreitag) ? p.endeFreitag : p.end;
+}
 
 // Bezahlte Kurzpausen, über beide Schichten hinweg gepflegt. Je nach Schicht
 // greifen automatisch nur die, die ins jeweilige Zeitfenster fallen.
@@ -889,8 +918,8 @@ function clockAfterWork(fromClock, workMins, list){
 // Schicht anhand der echten Uhrzeit erraten (Früh-/Spät-Fenster aus SCHICHT_PRESETS).
 function detectSchicht(nowClock){
   for(const art of ['frueh','spaet']){
-    const p = SCHICHT_PRESETS[art];
-    const s = toMinutes(p.start), e = toMinutes(p.end);
+    const s = toMinutes(SCHICHT_PRESETS[art].start), e = toMinutes(endeFuer(art));
+    if(s === null || e === null) continue;
     if(nowClock >= s && nowClock < e) return art;
   }
   return null;
@@ -942,10 +971,12 @@ function fillSettingsInputs(){
   document.getElementById('setFruehEnde').value = SCHICHT_PRESETS.frueh.end;
   document.getElementById('setFruehPause').value = SCHICHT_PRESETS.frueh.pause;
   document.getElementById('setFruehPausenbeginn').value = SCHICHT_PRESETS.frueh.pausenbeginn;
+  document.getElementById('setFruehEndeFreitag').value = SCHICHT_PRESETS.frueh.endeFreitag || '';
   document.getElementById('setSpaetStart').value = SCHICHT_PRESETS.spaet.start;
   document.getElementById('setSpaetEnde').value = SCHICHT_PRESETS.spaet.end;
   document.getElementById('setSpaetPause').value = SCHICHT_PRESETS.spaet.pause;
   document.getElementById('setSpaetPausenbeginn').value = SCHICHT_PRESETS.spaet.pausenbeginn;
+  document.getElementById('setSpaetEndeFreitag').value = SCHICHT_PRESETS.spaet.endeFreitag || '';
 }
 
 function renderKurzpausen(){
@@ -990,13 +1021,16 @@ async function saveSettingsFromInputs(){
     start: document.getElementById('setFruehStart').value || SCHICHT_PRESETS.frueh.start,
     end: document.getElementById('setFruehEnde').value || SCHICHT_PRESETS.frueh.end,
     pause: document.getElementById('setFruehPause').value || SCHICHT_PRESETS.frueh.pause,
-    pausenbeginn: document.getElementById('setFruehPausenbeginn').value || SCHICHT_PRESETS.frueh.pausenbeginn
+    pausenbeginn: document.getElementById('setFruehPausenbeginn').value || SCHICHT_PRESETS.frueh.pausenbeginn,
+    // Leeres Feld ist eine gültige Angabe: dann gilt freitags das normale Ende.
+    endeFreitag: document.getElementById('setFruehEndeFreitag').value
   };
   SCHICHT_PRESETS.spaet = {
     start: document.getElementById('setSpaetStart').value || SCHICHT_PRESETS.spaet.start,
     end: document.getElementById('setSpaetEnde').value || SCHICHT_PRESETS.spaet.end,
     pause: document.getElementById('setSpaetPause').value || SCHICHT_PRESETS.spaet.pause,
-    pausenbeginn: document.getElementById('setSpaetPausenbeginn').value || SCHICHT_PRESETS.spaet.pausenbeginn
+    pausenbeginn: document.getElementById('setSpaetPausenbeginn').value || SCHICHT_PRESETS.spaet.pausenbeginn,
+    endeFreitag: document.getElementById('setSpaetEndeFreitag').value
   };
   store.set('schicht-einstellungen', JSON.stringify(SCHICHT_PRESETS));
 
@@ -1097,7 +1131,7 @@ function applySchicht(art){
   const p = SCHICHT_PRESETS[art];
   if(!p) return;
   els.start.value = p.start;
-  els.end.value = p.end;
+  els.end.value = endeFuer(art);
   els.pause.value = p.pause;
   els.pausenbeginn.value = p.pausenbeginn;
   schichtart = art;
@@ -1217,6 +1251,7 @@ function calc(){
 
   updateOffHoursHint(start, end, jetzt);
   updatePauseInfo(pause, pausenbeginn, start, end);
+  updateFreitagInfo();
   updateOffenLine(stkGesamt, stkOffen);
 
   if(start===null || end===null || !stueckzeit || stueckzeit<=0){
@@ -1280,6 +1315,18 @@ function updateOffenLine(stkGesamt, stkOffen){
   document.getElementById('offenLine').innerHTML = stkGesamt > 0
     ? t('offenWert', {stk: stkOffen.toFixed(0)})
     : t('offenLeer');
+}
+
+// Sichtbar machen, dass gerade die kürzere Freitagszeit gerechnet wird.
+function updateFreitagInfo(){
+  const el = document.getElementById('freitagInfo');
+  const kurz = istFreitag() && schichtart && SCHICHT_PRESETS[schichtart].endeFreitag;
+  if(kurz){
+    el.textContent = t('freitagKurz', {ende: SCHICHT_PRESETS[schichtart].endeFreitag});
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 function updatePauseInfo(pause, pausenbeginn, start, end){
@@ -1454,8 +1501,8 @@ setInterval(()=>{ if(jetztAuto) setNowTime(); }, 20000);
   });
 });
 
-['setFruehStart','setFruehEnde','setFruehPause','setFruehPausenbeginn',
- 'setSpaetStart','setSpaetEnde','setSpaetPause','setSpaetPausenbeginn'].forEach(id=>{
+['setFruehStart','setFruehEnde','setFruehPause','setFruehPausenbeginn','setFruehEndeFreitag',
+ 'setSpaetStart','setSpaetEnde','setSpaetPause','setSpaetPausenbeginn','setSpaetEndeFreitag'].forEach(id=>{
   document.getElementById(id).addEventListener('input', saveSettingsFromInputs);
   document.getElementById(id).addEventListener('change', saveSettingsFromInputs);
 });
