@@ -314,6 +314,21 @@
     white-space:nowrap;
   }
 
+  .kp-row{display:flex; gap:8px; align-items:flex-end; margin-bottom:8px;}
+  .kp-row .field{flex:1;}
+  .kp-del{
+    flex:0 0 40px;
+    background:#171a15;
+    border:1px solid var(--panel-edge);
+    border-radius:6px;
+    color:var(--red);
+    font-family:'JetBrains Mono', monospace;
+    font-size:15px;
+    padding:9px 0;
+    cursor:pointer;
+  }
+  .kp-del:hover{background:var(--red); color:#fff;}
+
   .log-list{list-style:none; margin:0; padding:0;}
   .log-list li{
     display:flex;
@@ -529,6 +544,17 @@
       </div>
     </div>
 
+    <div class="card">
+      <h2 data-i18n="kurzpausen">Bezahlte Kurzpausen</h2>
+      <div id="kurzpausenListe"></div>
+      <div class="row" style="margin-top:10px;">
+        <button type="button" class="btn btn-ghost" id="kurzpauseAddBtn" data-i18n="kurzpauseHinzufuegen">+ Kurzpause</button>
+      </div>
+      <div class="info-line" style="margin-top:10px;" data-i18n="kurzpausenHinweis">
+        Gelten für beide Schichten – es zählt jeweils, was ins Zeitfenster der Schicht fällt.
+      </div>
+    </div>
+
     <div class="hint hint-info" data-i18n="einstellungenHinweis">
       Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.
     </div>
@@ -582,6 +608,14 @@ const TEXTS = {
     pauseMin: 'Pause (min)',
     pauseUm: 'Pause um',
     einstellungenHinweis: 'Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.',
+    kurzpausen: 'Bezahlte Kurzpausen',
+    kurzpauseHinzufuegen: '+ Kurzpause',
+    kurzpausenHinweis: 'Gelten für beide Schichten – es zählt jeweils, was ins Zeitfenster der Schicht fällt.',
+    kpZeit: 'Beginn',
+    kpDauer: 'Dauer (min)',
+    kpEntfernen: 'Kurzpause entfernen',
+    kpLeer: 'Keine Kurzpausen eingetragen.',
+    kurzpausenInfo: '{n}× Kurzpause ({zeiten})',
 
     stk: 'Stk',
     stkProMin: '{rate} Stk/min',
@@ -664,6 +698,14 @@ const TEXTS = {
     pauseMin: 'Přestávka (min)',
     pauseUm: 'Přestávka v',
     einstellungenHinweis: 'Tyto časy určují automatické rozpoznání ranní/odpolední směny a přepínač v záložce „Směna“.',
+    kurzpausen: 'Placené krátké přestávky',
+    kurzpauseHinzufuegen: '+ Krátká přestávka',
+    kurzpausenHinweis: 'Platí pro obě směny – započítá se vždy to, co spadá do časového okna dané směny.',
+    kpZeit: 'Začátek',
+    kpDauer: 'Délka (min)',
+    kpEntfernen: 'Odebrat krátkou přestávku',
+    kpLeer: 'Žádné krátké přestávky.',
+    kurzpausenInfo: '{n}× krátká přestávka ({zeiten})',
 
     stk: 'ks',
     stkProMin: '{rate} ks/min',
@@ -739,6 +781,15 @@ const SCHICHT_PRESETS = {
   spaet: {start:'14:00', end:'22:42', pause:'30', pausenbeginn:'19:00'}
 };
 
+// Bezahlte Kurzpausen, über beide Schichten hinweg gepflegt. Je nach Schicht
+// greifen automatisch nur die, die ins jeweilige Zeitfenster fallen.
+let KURZPAUSEN = [
+  {zeit:'08:00', dauer:'5'},
+  {zeit:'10:00', dauer:'5'},
+  {zeit:'16:30', dauer:'5'},
+  {zeit:'21:00', dauer:'5'}
+];
+
 // Dezimalzahl aus einem Feld lesen. Der Ziffernblock am Handy liefert je nach
 // Sprache ein Komma statt eines Punkts – beides muss die Stückzeit annehmen.
 function parseNum(v){
@@ -767,25 +818,58 @@ function fmtClock(mins){
   return `${h}:${m}`;
 }
 
-// Uhrzeit nach `workMins` reiner Arbeitszeit ab `fromClock`, unter Berücksichtigung
-// einer noch bevorstehenden oder laufenden Pause (Pausenbeginn + Dauer in Minuten).
-function clockAfterWork(fromClock, workMins, pausenbeginn, pauseLen){
-  if(pausenbeginn === null || pauseLen <= 0){
-    return fromClock + workMins;
+// Alle Pausen der aktuellen Schicht als sortierte Liste {von, bis} in Minuten.
+// Die unbezahlte Hauptpause und die bezahlten Kurzpausen unterbrechen die
+// Produktion gleichermaßen – für den Akkord zählt allein, wann nicht gearbeitet wird.
+// Kurzpausen außerhalb des Schichtfensters gehören zur jeweils anderen Schicht.
+function pausenListe(start, end){
+  const list = [];
+  const hauptVon = toMinutes(els.pausenbeginn.value);
+  const hauptLen = parseFloat(els.pause.value) || 0;
+  if(hauptVon !== null && hauptLen > 0){
+    list.push({von: hauptVon, bis: hauptVon + hauptLen});
   }
-  const pauseEnd = pausenbeginn + pauseLen;
-  if(fromClock >= pauseEnd){
-    return fromClock + workMins; // Pause schon vorbei
+  KURZPAUSEN.forEach(kp=>{
+    const von = toMinutes(kp.zeit);
+    const len = parseFloat(kp.dauer) || 0;
+    if(von === null || len <= 0) return;
+    if(start !== null && end !== null && (von < start || von >= end)) return;
+    list.push({von, bis: von + len});
+  });
+  return list.sort((a,b)=>a.von-b.von);
+}
+
+function pausenSumme(list){
+  return list.reduce((s,p)=>s + (p.bis - p.von), 0);
+}
+
+// Wie viel Pausenzeit bis `clock` bereits verstrichen ist (inkl. laufender Pause).
+function pauseBis(list, clock){
+  let sum = 0;
+  for(const p of list){
+    if(clock >= p.bis) sum += p.bis - p.von;
+    else if(clock > p.von) sum += clock - p.von;
   }
-  if(fromClock >= pausenbeginn){
-    // mitten in der Pause: erst Pause zu Ende, dann Arbeit
-    return pauseEnd + workMins;
+  return sum;
+}
+
+// Uhrzeit nach `workMins` reiner Arbeitszeit ab `fromClock`; alle dazwischen
+// liegenden Pausen werden übersprungen.
+function clockAfterWork(fromClock, workMins, list){
+  let clock = fromClock;
+  let rest = workMins;
+  for(const p of list){
+    if(p.bis <= clock) continue;   // Pause liegt schon hinter uns
+    if(clock >= p.von){            // wir stecken gerade mittendrin
+      clock = p.bis;
+      continue;
+    }
+    const bisPause = p.von - clock;
+    if(rest <= bisPause) return clock + rest; // fertig, bevor die Pause beginnt
+    rest -= bisPause;
+    clock = p.bis;                 // Pause aussitzen, danach weiter
   }
-  const bisPause = pausenbeginn - fromClock;
-  if(workMins <= bisPause){
-    return fromClock + workMins; // fertig, bevor die Pause beginnt
-  }
-  return fromClock + workMins + pauseLen; // Arbeit überspannt die Pause
+  return clock + rest;
 }
 
 // Schicht anhand der echten Uhrzeit erraten (Früh-/Spät-Fenster aus SCHICHT_PRESETS).
@@ -829,6 +913,7 @@ function applyLang(){
   document.getElementById('saveNote').textContent = t('speicherHinweis');
   renderHeute();
   renderVerlauf();
+  renderKurzpausen();
   calc();
 }
 
@@ -849,6 +934,44 @@ function fillSettingsInputs(){
   document.getElementById('setSpaetEnde').value = SCHICHT_PRESETS.spaet.end;
   document.getElementById('setSpaetPause').value = SCHICHT_PRESETS.spaet.pause;
   document.getElementById('setSpaetPausenbeginn').value = SCHICHT_PRESETS.spaet.pausenbeginn;
+}
+
+function renderKurzpausen(){
+  const box = document.getElementById('kurzpausenListe');
+  box.innerHTML = KURZPAUSEN.map((kp, i) => `
+    <div class="kp-row">
+      <div class="field">
+        <label for="kpZeit${i}">${t('kpZeit')}</label>
+        <input type="time" id="kpZeit${i}" data-kp="${i}" data-kpfeld="zeit" value="${kp.zeit}">
+      </div>
+      <div class="field">
+        <label for="kpDauer${i}">${t('kpDauer')}</label>
+        <input type="number" id="kpDauer${i}" data-kp="${i}" data-kpfeld="dauer" min="0" inputmode="numeric" value="${kp.dauer}">
+      </div>
+      <button type="button" class="kp-del" data-kpdel="${i}" aria-label="${t('kpEntfernen')}">✕</button>
+    </div>`).join('') || `<div class="log-empty">${t('kpLeer')}</div>`;
+
+  box.querySelectorAll('[data-kp]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      KURZPAUSEN[inp.dataset.kp][inp.dataset.kpfeld] = inp.value;
+      saveKurzpausen();
+    });
+  });
+  box.querySelectorAll('[data-kpdel]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      KURZPAUSEN.splice(parseInt(btn.dataset.kpdel), 1);
+      renderKurzpausen();
+      saveKurzpausen();
+    });
+  });
+}
+
+async function saveKurzpausen(){
+  try{
+    await window.storage.set('kurzpausen', JSON.stringify(KURZPAUSEN));
+    flashSaveNote(t('einstellungenGespeichert'));
+  }catch(e){ console.error('Kurzpausen speichern fehlgeschlagen', e); }
+  calc();
 }
 
 async function saveSettingsFromInputs(){
@@ -892,6 +1015,14 @@ async function loadSaved(){
     }
   }catch(e){ /* Standard-Schichtzeiten verwenden */ }
   fillSettingsInputs();
+
+  try{
+    const r = await window.storage.get('kurzpausen');
+    if(r && r.value){
+      const d = JSON.parse(r.value);
+      if(Array.isArray(d)) KURZPAUSEN = d;
+    }
+  }catch(e){ /* Standard-Kurzpausen verwenden */ }
 
   try{
     const r = await window.storage.get('schicht-defaults');
@@ -1068,9 +1199,10 @@ function calc(){
   const stkOffen = Math.max(stkGesamt - stkAktuell, 0);     // ergibt sich, statt separat eingetippt zu werden
   const jetzt = toMinutes(els.jetzt.value);
   const pausenbeginn = toMinutes(els.pausenbeginn.value);
+  const pausen = pausenListe(start, end);
 
   updateOffHoursHint(start, end, jetzt);
-  updatePauseInfo(pause, pausenbeginn);
+  updatePauseInfo(pause, pausenbeginn, start, end);
   updateOffenLine(stkGesamt, stkOffen);
 
   if(start===null || end===null || !stueckzeit || stueckzeit<=0){
@@ -1079,7 +1211,7 @@ function calc(){
   }
 
   const totalClock = end - start;
-  const workMinutes = totalClock - pause;
+  const workMinutes = totalClock - pausenSumme(pausen);
   if(workMinutes <= 0){ updatePlan(); return; }
 
   const sollStk = workMinutes / stueckzeit;
@@ -1104,18 +1236,7 @@ function calc(){
   // Hochrechnung, wenn "jetzt" innerhalb der Schicht liegt
   if(jetzt !== null && jetzt > start && jetzt < end){
     const elapsedClock = jetzt - start;
-
-    let pauseTaken = 0;
-    if(pausenbeginn !== null){
-      if(jetzt <= pausenbeginn){
-        pauseTaken = 0;
-      } else if(jetzt >= pausenbeginn + pause){
-        pauseTaken = pause;
-      } else {
-        pauseTaken = jetzt - pausenbeginn;
-      }
-    }
-    const elapsedWork = Math.max(elapsedClock - pauseTaken, 0.01);
+    const elapsedWork = Math.max(elapsedClock - pauseBis(pausen, jetzt), 0.01);
 
     rate = totalStk / elapsedWork;
     document.getElementById('statRate').textContent = t('stkProMin', {rate: rate.toFixed(3)});
@@ -1137,7 +1258,7 @@ function calc(){
       : (jetzt <= start ? t('projVorSchicht') : t('projNachSchicht'));
   }
 
-  updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause);
+  updateAuftragProjektion(stkOffen, rate, jetzt, end, pausen);
   updatePlan();
 }
 
@@ -1147,13 +1268,27 @@ function updateOffenLine(stkGesamt, stkOffen){
     : t('offenLeer');
 }
 
-function updatePauseInfo(pause, pausenbeginn){
-  document.getElementById('pauseInfo').textContent = pausenbeginn !== null
+function updatePauseInfo(pause, pausenbeginn, start, end){
+  let text = pausenbeginn !== null
     ? t('pauseInfo', {min: pause, ab: els.pausenbeginn.value})
     : t('pauseInfoOhneZeit', {min: pause});
+
+  // Nur die Kurzpausen nennen, die in diese Schicht fallen.
+  const kurz = KURZPAUSEN
+    .filter(kp=>{
+      const von = toMinutes(kp.zeit), len = parseFloat(kp.dauer) || 0;
+      if(von === null || len <= 0) return false;
+      return start === null || end === null || (von >= start && von < end);
+    })
+    .map(kp=>kp.zeit);
+
+  if(kurz.length){
+    text += ' · ' + t('kurzpausenInfo', {n: kurz.length, zeiten: kurz.join(', ')});
+  }
+  document.getElementById('pauseInfo').textContent = text;
 }
 
-function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause){
+function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausen){
   const el = document.getElementById('auftragProjText');
   if(stkOffen <= 0){
     el.innerHTML = t('auftragLeer');
@@ -1165,7 +1300,7 @@ function updateAuftragProjektion(stkOffen, rate, jetzt, end, pausenbeginn, pause
   }
 
   const remainingMin = stkOffen / rate;
-  const fertigUm = clockAfterWork(jetzt, remainingMin, pausenbeginn, pause);
+  const fertigUm = clockAfterWork(jetzt, remainingMin, pausen);
 
   if(fertigUm <= end){
     el.innerHTML = t('auftragPasst', {
@@ -1219,19 +1354,18 @@ function updatePlan(){
   const start = toMinutes(els.start.value);
   const end = toMinutes(els.end.value);
   const jetzt = toMinutes(els.jetzt.value);
-  const pause = parseFloat(els.pause.value) || 0;
-  const pausenbeginn = toMinutes(els.pausenbeginn.value);
 
   if(start === null || end === null){
     el.innerHTML = t('planKeineSchicht');
     return;
   }
 
+  const pausen = pausenListe(start, end);
   const neededMin = gesamt * stz;
   const jetztImFenster = jetzt !== null && jetzt >= start && jetzt < end;
   const refClock = jetztImFenster ? jetzt : start;
   const bezug = jetztImFenster ? t('planAbJetzt') : t('planAbBeginn');
-  const fertigUm = clockAfterWork(refClock, neededMin, pausenbeginn, pause);
+  const fertigUm = clockAfterWork(refClock, neededMin, pausen);
 
   if(fertigUm <= end){
     el.innerHTML = t('planPasst', {
@@ -1309,6 +1443,12 @@ setInterval(()=>{ if(jetztAuto) setNowTime(); }, 20000);
 ['setFruehStart','setFruehEnde','setFruehPause','setFruehPausenbeginn',
  'setSpaetStart','setSpaetEnde','setSpaetPause','setSpaetPausenbeginn'].forEach(id=>{
   document.getElementById(id).addEventListener('change', saveSettingsFromInputs);
+});
+
+document.getElementById('kurzpauseAddBtn').addEventListener('click', ()=>{
+  KURZPAUSEN.push({zeit:'12:00', dauer:'5'});
+  renderKurzpausen();
+  saveKurzpausen();
 });
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
