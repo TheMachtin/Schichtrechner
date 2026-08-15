@@ -222,6 +222,9 @@
     margin-bottom:14px;
   }
   .pct-display .unit{font-size:24px; color:var(--text-dim); font-weight:400;}
+  .pct-display.gut{color:var(--green);}
+  .pct-display.knapp{color:var(--amber);}
+  .pct-display.schlecht{color:var(--red);}
 
   .track{
     height:10px;
@@ -247,6 +250,38 @@
     width:2px;
     background:var(--text-dim);
     left:100%;
+  }
+
+  .track-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:6px;
+  }
+
+  /* Stückzahl direkt unter der grossen Zahl: ablesen und hochzählen ohne Scrollen */
+  .hero-stepper{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+  }
+  .hero-stepper input{
+    flex:1;
+    text-align:center;
+    font-size:22px;
+    font-weight:700;
+    padding:12px 10px;
+  }
+  .hero-stepper .step-btn{
+    flex:0 0 60px;
+    font-size:26px;
+    padding:12px 0;
+  }
+  .stepper-label{
+    font-size:11px;
+    color:var(--text-dim);
+    text-align:center;
+    margin-top:6px;
   }
 
   .stats{
@@ -372,6 +407,40 @@
 
   <div class="tab-panel active" data-panel="schicht">
 
+    <!-- Das Ergebnis steht bewusst ganz oben: App auf, Zahl ablesen, fertig. -->
+    <div class="hero">
+      <div class="hero-top">
+        <span class="hero-label" data-i18n="leistungsgrad">Leistungsgrad</span>
+        <span class="hero-sub" id="heroSeit">–</span>
+      </div>
+      <div class="pct-display" id="pctMain">–<span class="unit">%</span></div>
+
+      <div class="track">
+        <div class="fill" id="fillBar"></div>
+        <div class="marker-100"></div>
+      </div>
+      <div class="track-label" id="fortschrittLabel">–</div>
+
+      <div class="hero-stepper">
+        <button type="button" class="step-btn" id="stkMinus" data-i18n-aria="stkMinusLabel">−</button>
+        <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
+        <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
+      </div>
+      <div class="stepper-label" data-i18n="davonFertig">Stück im laufenden Auftrag</div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label" id="statDiffLabel" data-i18n="vorsprung">Vorsprung</div>
+          <div class="stat-value" id="statDiff">–</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" data-i18n="verbleibend">Verbleibend (Soll)</div>
+          <div class="stat-value" id="statVerbleibend">–</div>
+        </div>
+      </div>
+      <div class="proj" id="projText"></div>
+    </div>
+
     <div class="card">
       <h2 data-i18n="schicht">Schicht</h2>
       <div class="row btn-row" style="margin-bottom:14px;">
@@ -416,16 +485,6 @@
           <input type="number" id="stkGesamt" value="0" min="0" inputmode="numeric">
         </div>
       </div>
-      <div class="row">
-        <div class="field">
-          <label for="stkAktuell" data-i18n="davonFertig">Davon fertig (Stk)</label>
-          <div class="stepper">
-            <button type="button" class="step-btn" id="stkMinus" data-i18n-aria="stkMinusLabel">−</button>
-            <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
-            <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
-          </div>
-        </div>
-      </div>
       <div class="offen-line" id="offenLine"></div>
       <div class="row btn-row" style="margin-top:12px;">
         <button class="btn btn-ghost" id="jetztBtn" data-i18n="uhrzeitJetzt">Uhrzeit jetzt</button>
@@ -436,29 +495,6 @@
         <span><span data-i18n="heuteVerbucht">Heute verbucht:</span> <span class="stk" id="heuteStk"></span></span>
         <button class="undo-btn" id="undoBtn" data-i18n="letzteBuchung">✕ letzte Buchung</button>
       </div>
-    </div>
-
-    <div class="hero">
-      <div class="hero-top">
-        <span class="hero-label" data-i18n="sollErreicht">Soll erreicht (Schicht gesamt)</span>
-        <span class="hero-sub" id="sollLabel">–</span>
-      </div>
-      <div class="pct-display" id="pctMain">–<span class="unit">%</span></div>
-      <div class="track">
-        <div class="fill" id="fillBar"></div>
-        <div class="marker-100"></div>
-      </div>
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-label" data-i18n="verbleibend">Verbleibend (Soll)</div>
-          <div class="stat-value" id="statVerbleibend">–</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label" data-i18n="rateGerade">Rate gerade</div>
-          <div class="stat-value amber" id="statRate">–</div>
-        </div>
-      </div>
-      <div class="proj" id="projText"></div>
     </div>
 
     <div class="card">
@@ -600,16 +636,19 @@ const TEXTS = {
     uhrzeit: 'Uhrzeit',
     laeuftMit: '· läuft mit',
     auftragGesamt: 'Auftrag gesamt (Stk)',
-    davonFertig: 'Davon fertig (Stk)',
+    davonFertig: 'Stück im laufenden Auftrag',
     stkPlusLabel: 'Ein Stück mehr',
     stkMinusLabel: 'Ein Stück weniger',
     uhrzeitJetzt: 'Uhrzeit jetzt',
     auftragFertig: 'Auftrag fertig ✓',
     heuteVerbucht: 'Heute verbucht:',
     letzteBuchung: '✕ letzte Buchung',
-    sollErreicht: 'Soll erreicht (Schicht gesamt)',
+    leistungsgrad: 'Leistungsgrad',
+    seit: 'seit {start}',
+    vorsprung: 'Vorsprung',
+    rueckstand: 'Rückstand',
+    fortschritt: '{erarbeitet} von {gesamt} erarbeitet · {pct}% vom Tagessoll',
     verbleibend: 'Verbleibend (Soll)',
-    rateGerade: 'Rate gerade',
     verlauf: 'Verlauf',
     auftragPlanen: 'Auftrag planen',
     gesamtstueckzahl: 'Gesamtstückzahl',
@@ -633,10 +672,8 @@ const TEXTS = {
     kurzpausenInfo: '{n}× Kurzpause ({zeiten})',
 
     stk: 'Stk',
-    stkProMin: '{rate} Stk/min',
     stunde: 'h',
     minute: 'min',
-    sollPaar: '{ist} / {soll} Stk',
     verbleibendWert: '{stk} Stk',
     offenLeer: 'Noch offen: <b>–</b>',
     offenWert: 'Noch offen: <b>{stk} Stk</b>',
@@ -657,7 +694,9 @@ const TEXTS = {
     projKeineZeit: 'Uhrzeit eingeben für Hochrechnung.',
     projVorSchicht: 'Schicht hat laut Uhrzeit noch nicht begonnen.',
     projNachSchicht: 'Schicht ist laut Uhrzeit bereits vorbei.',
-    projHochrechnung: 'Bei gleichem Tempo bis <b>{ende} Uhr</b>: ca. <span class="big">{stk} Stk</span> → <span class="big">{pct}%</span> vom Soll.<br>Vergangene Arbeitszeit: {gearbeitet} von {gesamt}.',
+    projHochrechnung: 'Bei gleichem Tempo bis <b>{ende} Uhr</b>: <span class="big">{erarbeitet}</span> erarbeitet — <span class="big">{diff}</span> {lage}.',
+    ueberSoll: 'über dem Tagessoll',
+    unterSoll: 'unter dem Tagessoll',
 
     auftragLeer: 'Auftrags-Stückzahl eingeben für Prognose, ob sich der Auftrag ausgeht.',
     auftragKeineRate: 'Noch keine Rate berechenbar – sobald die ersten Stück fertig sind, kommt die Prognose.',
@@ -692,16 +731,19 @@ const TEXTS = {
     uhrzeit: 'Čas',
     laeuftMit: '· běží',
     auftragGesamt: 'Zakázka celkem (ks)',
-    davonFertig: 'Z toho hotovo (ks)',
+    davonFertig: 'Kusy v aktuální zakázce',
     stkPlusLabel: 'O kus více',
     stkMinusLabel: 'O kus méně',
     uhrzeitJetzt: 'Aktuální čas',
     auftragFertig: 'Zakázka hotová ✓',
     heuteVerbucht: 'Dnes zapsáno:',
     letzteBuchung: '✕ poslední zápis',
-    sollErreicht: 'Splnění normy (celá směna)',
+    leistungsgrad: 'Výkon',
+    seit: 'od {start}',
+    vorsprung: 'Náskok',
+    rueckstand: 'Skluz',
+    fortschritt: '{erarbeitet} z {gesamt} odvedeno · {pct} % denní normy',
     verbleibend: 'Zbývá do normy',
-    rateGerade: 'Aktuální tempo',
     verlauf: 'Historie',
     auftragPlanen: 'Plánování zakázky',
     gesamtstueckzahl: 'Celkový počet kusů',
@@ -725,10 +767,8 @@ const TEXTS = {
     kurzpausenInfo: '{n}× krátká přestávka ({zeiten})',
 
     stk: 'ks',
-    stkProMin: '{rate} ks/min',
     stunde: 'h',
     minute: 'min',
-    sollPaar: '{ist} / {soll} ks',
     verbleibendWert: '{stk} ks',
     offenLeer: 'Zbývá: <b>–</b>',
     offenWert: 'Zbývá: <b>{stk} ks</b>',
@@ -749,7 +789,9 @@ const TEXTS = {
     projKeineZeit: 'Zadejte aktuální čas pro výpočet.',
     projVorSchicht: 'Směna podle času ještě nezačala.',
     projNachSchicht: 'Směna podle času už skončila.',
-    projHochrechnung: 'Při stejném tempu do <b>{ende}</b>: cca <span class="big">{stk} ks</span> → <span class="big">{pct} %</span> normy.<br>Odpracováno: {gearbeitet} z {gesamt}.',
+    projHochrechnung: 'Při stejném tempu do <b>{ende}</b>: odvedeno <span class="big">{erarbeitet}</span> — <span class="big">{diff}</span> {lage}.',
+    ueberSoll: 'nad denní normou',
+    unterSoll: 'pod denní normou',
 
     auftragLeer: 'Zadejte počet kusů zakázky pro odhad, zda se stihne.',
     auftragKeineRate: 'Tempo zatím nelze spočítat – odhad se zobrazí po prvních hotových kusech.',
@@ -923,6 +965,15 @@ function detectSchicht(nowClock){
     if(nowClock >= s && nowClock < e) return art;
   }
   return null;
+}
+
+// Erbrachte Vorgabezeit in Minuten. Jeder verbuchte Auftrag zählt mit SEINER
+// Stückzeit – über den Tag laufen unterschiedliche Vorgaben, die man nicht
+// über eine gemeinsame Stückzahl vergleichen kann. Alteinträge ohne
+// gespeicherte Stückzeit fallen auf die aktuelle zurück.
+function erbrachteVorgabezeit(stueckzeitAktuell, stkAktuell){
+  const verbucht = log.reduce((s, e) => s + e.stk * (e.stueckzeit || stueckzeitAktuell), 0);
+  return verbucht + stkAktuell * stueckzeitAktuell;
 }
 
 function nowMinutes(){
@@ -1226,7 +1277,9 @@ function auftragFertig(){
   const stk = parseFloat(els.stkAktuell.value) || 0;
   if(stk <= 0) return;
   const zeit = els.jetzt.value || '--:--';
-  log.push({stk, zeit});
+  // Stückzeit mitschreiben: der nächste Auftrag hat oft eine andere, und ohne
+  // sie ließe sich die Tagesleistung später nicht mehr korrekt aufaddieren.
+  log.push({stk, zeit, stueckzeit: parseNum(els.stueckzeit.value) || 0});
   gesamtStk += stk;
   els.stkAktuell.value = 0;
   els.stkGesamt.value = 0;
@@ -1263,45 +1316,59 @@ function calc(){
   const workMinutes = totalClock - pausenSumme(pausen);
   if(workMinutes <= 0){ updatePlan(); return; }
 
-  const sollStk = workMinutes / stueckzeit;
+  // Alles rechnet über die Vorgabezeit, nicht über Stückzahlen: nur so lassen
+  // sich Aufträge mit unterschiedlichen Stückzeiten überhaupt zusammenzählen.
+  const erbracht = erbrachteVorgabezeit(stueckzeit, stkAktuell);
 
-  // Gesamtproduktion bisher = verbuchte Aufträge + laufender (noch nicht verbuchter) Auftrag
-  const totalStk = gesamtStk + stkAktuell;
+  // Tagesfortschritt: wie viel der Schicht-Arbeitszeit ist schon erarbeitet
+  const pctTag = (erbracht / workMinutes) * 100;
+  // Neutral eingefärbt: der Tagesfortschritt ist keine Bewertung, sondern zeigt
+  // nur, wie weit die Schicht ist. Bewertet wird über die grosse Zahl.
+  document.getElementById('fillBar').style.width = Math.min(pctTag, 100) + '%';
+  document.getElementById('fortschrittLabel').textContent = t('fortschritt', {
+    erarbeitet: fmtMin(erbracht),
+    gesamt: fmtMin(workMinutes),
+    pct: pctTag.toFixed(0)
+  });
 
-  document.getElementById('sollLabel').textContent =
-    t('sollPaar', {ist: totalStk.toFixed(0), soll: sollStk.toFixed(0)});
   document.getElementById('statVerbleibend').textContent =
-    t('verbleibendWert', {stk: Math.max(sollStk - totalStk, 0).toFixed(0)});
+    t('verbleibendWert', {stk: Math.max((workMinutes - erbracht) / stueckzeit, 0).toFixed(0)});
 
-  const pctSoll = (totalStk / sollStk) * 100;
-  document.getElementById('pctMain').innerHTML = `${pctSoll.toFixed(1)}<span class="unit">%</span>`;
-  document.getElementById('fillBar').style.width = Math.min(pctSoll,100) + '%';
-  document.getElementById('fillBar').style.background = pctSoll >= 70
-    ? 'repeating-linear-gradient(90deg, var(--green) 0px, var(--green) 8px, var(--green-dim) 8px, var(--green-dim) 9px)'
-    : 'repeating-linear-gradient(90deg, var(--amber) 0px, var(--amber) 8px, #8a5f1c 8px, #8a5f1c 9px)';
+  let rate = null; // Stk pro Arbeitsminute des laufenden Auftrags, für die Prognose
 
-  let rate = null; // Stk pro Arbeitsminute, basierend auf Gesamtproduktion
-
-  // Hochrechnung, wenn "jetzt" innerhalb der Schicht liegt
+  // Leistungsgrad, sobald "jetzt" in der Schicht liegt
   if(jetzt !== null && jetzt > start && jetzt < end){
-    const elapsedClock = jetzt - start;
-    const elapsedWork = Math.max(elapsedClock - pauseBis(pausen, jetzt), 0.01);
+    const elapsedWork = Math.max((jetzt - start) - pauseBis(pausen, jetzt), 0.01);
 
-    rate = totalStk / elapsedWork;
-    document.getElementById('statRate').textContent = t('stkProMin', {rate: rate.toFixed(3)});
+    // Kern des Akkords: erarbeitete Vorgabezeit gegen tatsächlich verbrauchte Zeit
+    const leistung = (erbracht / elapsedWork) * 100;
+    setLeistungsgrad(leistung);
+    document.getElementById('heroSeit').textContent = t('seit', {start: els.start.value});
 
-    const projectedTotal = rate * workMinutes;
-    const projectedPct = (projectedTotal / sollStk) * 100;
+    const diff = erbracht - elapsedWork; // Vorsprung (+) bzw. Rückstand (−) in Minuten
+    const diffEl = document.getElementById('statDiff');
+    document.getElementById('statDiffLabel').textContent = diff < 0 ? t('rueckstand') : t('vorsprung');
+    diffEl.textContent = (diff >= 0 ? '+' : '−') + fmtMin(Math.abs(diff));
+    diffEl.className = 'stat-value ' + (diff < 0 ? 'amber' : 'green');
 
+    rate = (gesamtStk + stkAktuell) / elapsedWork;
+
+    // Der hochgerechnete Prozentsatz wäre bei linearem Tempo identisch mit dem
+    // Leistungsgrad oben – interessant ist stattdessen der Überschuss in Zeit.
+    const hochgerechnet = (erbracht / elapsedWork) * workMinutes;
+    const diffEnde = hochgerechnet - workMinutes;
     document.getElementById('projText').innerHTML = t('projHochrechnung', {
       ende: els.end.value,
-      stk: projectedTotal.toFixed(0),
-      pct: projectedPct.toFixed(0),
-      gearbeitet: fmtMin(elapsedWork),
-      gesamt: fmtMin(workMinutes)
+      erarbeitet: fmtMin(hochgerechnet),
+      diff: (diffEnde >= 0 ? '+' : '−') + fmtMin(Math.abs(diffEnde)),
+      lage: diffEnde >= 0 ? t('ueberSoll') : t('unterSoll')
     });
   } else {
-    document.getElementById('statRate').textContent = '–';
+    setLeistungsgrad(null);
+    document.getElementById('heroSeit').textContent = '–';
+    document.getElementById('statDiff').textContent = '–';
+    document.getElementById('statDiff').className = 'stat-value';
+    document.getElementById('statDiffLabel').textContent = t('vorsprung');
     document.getElementById('projText').textContent = jetzt === null
       ? t('projKeineZeit')
       : (jetzt <= start ? t('projVorSchicht') : t('projNachSchicht'));
@@ -1309,6 +1376,18 @@ function calc(){
 
   updateAuftragProjektion(stkOffen, rate, jetzt, end, pausen);
   updatePlan();
+}
+
+// Grosse Zahl samt Ampelfarbe. 100 % heisst: genau in der Vorgabezeit gearbeitet.
+function setLeistungsgrad(pct){
+  const el = document.getElementById('pctMain');
+  if(pct === null || !isFinite(pct)){
+    el.innerHTML = '–<span class="unit">%</span>';
+    el.className = 'pct-display';
+    return;
+  }
+  el.innerHTML = `${pct.toFixed(1)}<span class="unit">%</span>`;
+  el.className = 'pct-display ' + (pct >= 100 ? 'gut' : (pct >= 90 ? 'knapp' : 'schlecht'));
 }
 
 function updateOffenLine(stkGesamt, stkOffen){
