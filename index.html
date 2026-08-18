@@ -148,6 +148,8 @@
   }
   .step-btn:active{background:var(--green); color:#111;}
 
+  input.fehlt{border-color:var(--amber); background:rgba(217,155,43,0.08);}
+
   .info-line{font-size:12px; color:var(--text-dim); margin-top:2px;}
   .offen-line{
     font-family:'JetBrains Mono', monospace;
@@ -222,6 +224,7 @@
     margin-bottom:14px;
   }
   .pct-display .unit{font-size:24px; color:var(--text-dim); font-weight:400;}
+  .pct-display.leer{color:var(--text-dim);}
   .pct-display.gut{color:var(--green);}
   .pct-display.knapp{color:var(--amber);}
   .pct-display.schlecht{color:var(--red);}
@@ -648,7 +651,8 @@ const TEXTS = {
     vorsprung: 'Vorsprung',
     rueckstand: 'Rückstand',
     fortschritt: '{erarbeitet} von {gesamt} erarbeitet · {pct}% vom Tagessoll',
-    verbleibend: 'Verbleibend (Soll)',
+    verbleibend: 'Rest bis Tagessoll',
+    stueckzeitFehlt: 'Stückzeit eingeben, dann wird gerechnet.',
     verlauf: 'Verlauf',
     auftragPlanen: 'Auftrag planen',
     gesamtstueckzahl: 'Gesamtstückzahl',
@@ -744,6 +748,7 @@ const TEXTS = {
     rueckstand: 'Skluz',
     fortschritt: '{erarbeitet} z {gesamt} odvedeno · {pct} % denní normy',
     verbleibend: 'Zbývá do normy',
+    stueckzeitFehlt: 'Zadejte čas na kus, pak se spustí výpočet.',
     verlauf: 'Historie',
     auftragPlanen: 'Plánování zakázky',
     gesamtstueckzahl: 'Celkový počet kusů',
@@ -1307,14 +1312,20 @@ function calc(){
   updateFreitagInfo();
   updateOffenLine(stkGesamt, stkOffen);
 
-  if(start===null || end===null || !stueckzeit || stueckzeit<=0){
+  // Ohne gültige Stückzeit lässt sich nichts rechnen. Die Anzeige muss dann
+  // geleert werden – sonst bleiben die alten Zahlen stehen und sehen aus wie
+  // ein fester Wert, der sich durch keine Eingabe mehr ändert.
+  const stueckzeitFehlt = !stueckzeit || stueckzeit <= 0;
+  els.stueckzeit.classList.toggle('fehlt', stueckzeitFehlt);
+  if(start===null || end===null || stueckzeitFehlt){
+    leereAnzeige(stueckzeitFehlt);
     updatePlan();
     return;
   }
 
   const totalClock = end - start;
   const workMinutes = totalClock - pausenSumme(pausen);
-  if(workMinutes <= 0){ updatePlan(); return; }
+  if(workMinutes <= 0){ leereAnzeige(false); updatePlan(); return; }
 
   // Alles rechnet über die Vorgabezeit, nicht über Stückzahlen: nur so lassen
   // sich Aufträge mit unterschiedlichen Stückzeiten überhaupt zusammenzählen.
@@ -1378,12 +1389,25 @@ function calc(){
   updatePlan();
 }
 
+// Alles auf "–" zurücksetzen, wenn nicht gerechnet werden kann.
+function leereAnzeige(stueckzeitFehlt){
+  setLeistungsgrad(null);
+  document.getElementById('heroSeit').textContent = '–';
+  document.getElementById('fillBar').style.width = '0%';
+  document.getElementById('fortschrittLabel').textContent = '–';
+  document.getElementById('statDiff').textContent = '–';
+  document.getElementById('statDiff').className = 'stat-value';
+  document.getElementById('statDiffLabel').textContent = t('vorsprung');
+  document.getElementById('statVerbleibend').textContent = '–';
+  document.getElementById('projText').textContent = stueckzeitFehlt ? t('stueckzeitFehlt') : t('projKeineZeit');
+}
+
 // Grosse Zahl samt Ampelfarbe. 100 % heisst: genau in der Vorgabezeit gearbeitet.
 function setLeistungsgrad(pct){
   const el = document.getElementById('pctMain');
   if(pct === null || !isFinite(pct)){
     el.innerHTML = '–<span class="unit">%</span>';
-    el.className = 'pct-display';
+    el.className = 'pct-display leer';
     return;
   }
   el.innerHTML = `${pct.toFixed(1)}<span class="unit">%</span>`;
