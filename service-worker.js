@@ -1,4 +1,4 @@
-const CACHE = 'takt-v9';
+const CACHE = 'takt-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -9,9 +9,14 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())
-  );
+  // Bewusst ohne skipWaiting: die neue Fassung wartet, bis die Seite grünes
+  // Licht gibt. Sonst würde mitten in der Schicht umgeschaltet, während die
+  // laufende Seite noch mit dem alten Code arbeitet.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
+});
+
+self.addEventListener('message', (event) => {
+  if(event.data && event.data.type === 'jetztWechseln') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

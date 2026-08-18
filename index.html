@@ -328,6 +328,30 @@
   }
   .save-note.show{color:var(--green);}
 
+  .version-note{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    color:#5c655a;
+    text-align:center;
+    margin-top:4px;
+  }
+
+  .update-banner{
+    width:100%;
+    display:block;
+    background:rgba(79,173,39,0.12);
+    border:1px solid var(--green);
+    color:var(--green);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    padding:11px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .update-banner:hover{background:var(--green); color:#111;}
+
   .heute-line{
     display:flex;
     justify-content:space-between;
@@ -399,6 +423,8 @@
     <h1>TAKT</h1>
     <span class="subtitle" data-i18n="subtitle">Akkord im Blick</span>
   </header>
+
+  <button type="button" class="update-banner" id="updateBanner" style="display:none;"></button>
 
   <div class="hint" id="offHoursHint" style="display:none;"></div>
 
@@ -613,10 +639,16 @@
   </div>
 
   <div class="save-note" id="saveNote"></div>
+  <div class="version-note" id="versionNote"></div>
 
 </div>
 
 <script>
+// Bei jeder Veröffentlichung hochzählen – zusammen mit CACHE in
+// service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
+const APP_VERSION = '10';
+const APP_DATUM = '15.08.2026';
+
 // ---------------------------------------------------------------------------
 // Sprachen. Platzhalter in geschweiften Klammern werden von t() ersetzt; die
 // Satzstellung darf sich pro Sprache frei unterscheiden.
@@ -686,6 +718,9 @@ const TEXTS = {
     heuteStk: '{stk} Stk',
 
     speicherHinweis: 'Alle Eingaben werden automatisch gespeichert.',
+    version: 'TAKT v{v} · {datum}',
+    updateBereit: 'Neue Version verfügbar · tippen zum Laden',
+    updateLaedt: 'Wird geladen …',
     gespeichert: 'Gespeichert für nächstes Mal.',
     einstellungenGespeichert: 'Einstellungen gespeichert.',
     auftragVerbucht: 'Auftrag mit {stk} Stk verbucht.',
@@ -782,6 +817,9 @@ const TEXTS = {
     heuteStk: '{stk} ks',
 
     speicherHinweis: 'Všechny zadané hodnoty se ukládají automaticky.',
+    version: 'TAKT v{v} · {datum}',
+    updateBereit: 'K dispozici nová verze · klepnutím načtete',
+    updateLaedt: 'Načítá se …',
     gespeichert: 'Uloženo pro příště.',
     einstellungenGespeichert: 'Nastavení uloženo.',
     auftragVerbucht: 'Zakázka s {stk} ks zapsána.',
@@ -1010,6 +1048,7 @@ function applyLang(){
     b.classList.toggle('active', b.dataset.lang === lang);
   });
   document.getElementById('saveNote').textContent = t('speicherHinweis');
+  document.getElementById('versionNote').textContent = t('version', {v: APP_VERSION, datum: APP_DATUM});
   renderHeute();
   renderVerlauf();
   renderKurzpausen();
@@ -1629,9 +1668,49 @@ loadSaved().then(()=>{
   setNowTime();
 });
 
+// ---------------------------------------------------------------------------
+// Aktualisierung. Eine laufende App holt von sich aus keine neue Fassung – sie
+// wird deshalb regelmässig danach gefragt. Umgeschaltet wird erst auf Tippen,
+// damit mitten in der Schicht keine Eingabe verloren geht.
+// ---------------------------------------------------------------------------
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+    navigator.serviceWorker.register('service-worker.js').then(reg => {
+
+      const melden = (sw) => {
+        if(!sw || !navigator.serviceWorker.controller) return; // Erstinstallation, kein Update
+        const banner = document.getElementById('updateBanner');
+        banner.textContent = t('updateBereit');
+        banner.style.display = 'block';
+        banner.onclick = () => {
+          banner.textContent = t('updateLaedt');
+          sw.postMessage({type: 'jetztWechseln'});
+        };
+      };
+
+      if(reg.waiting) melden(reg.waiting);
+
+      reg.addEventListener('updatefound', () => {
+        const neu = reg.installing;
+        if(!neu) return;
+        neu.addEventListener('statechange', () => {
+          if(neu.state === 'installed') melden(neu);
+        });
+      });
+
+      // Halbstündlich nachsehen, dazu bei jeder Rückkehr zur App.
+      setInterval(() => reg.update().catch(()=>{}), 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') reg.update().catch(()=>{});
+      });
+    }).catch(()=>{});
+
+    let neuGeladen = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(neuGeladen) return;   // controllerchange kann mehrfach feuern
+      neuGeladen = true;
+      location.reload();
+    });
   });
 }
 </script>
