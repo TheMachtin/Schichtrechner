@@ -429,46 +429,52 @@
   <div class="hint" id="offHoursHint" style="display:none;"></div>
 
   <div class="tabbar" role="tablist">
-    <button type="button" class="tab-btn active" data-tab="schicht" data-i18n="tabSchicht">Schicht</button>
-    <button type="button" class="tab-btn" data-tab="auftrag" data-i18n="tabAuftrag">Auftrag</button>
+    <button type="button" class="tab-btn active" data-tab="akkord" data-i18n="tabAkkord">Akkord</button>
+    <button type="button" class="tab-btn" data-tab="details" data-i18n="tabDetails">Details</button>
     <button type="button" class="tab-btn" data-tab="einstellungen" data-i18n="tabEinstellungen">Einstellungen</button>
   </div>
 
-  <div class="tab-panel active" data-panel="schicht">
+  <!-- Startseite: die eine Zahl und die drei Angaben, die sie braucht. -->
+  <div class="tab-panel active" data-panel="akkord">
 
-    <!-- Das Ergebnis steht bewusst ganz oben: App auf, Zahl ablesen, fertig. -->
     <div class="hero">
       <div class="hero-top">
         <span class="hero-label" data-i18n="leistungsgrad">Leistungsgrad</span>
-        <span class="hero-sub" id="heroSeit">–</span>
+        <span class="hero-sub" id="heroJetzt">–</span>
       </div>
       <div class="pct-display" id="pctMain">–<span class="unit">%</span></div>
-
-      <div class="track">
-        <div class="fill" id="fillBar"></div>
-        <div class="marker-100"></div>
-      </div>
-      <div class="track-label" id="fortschrittLabel">–</div>
-
-      <div class="hero-stepper">
-        <button type="button" class="step-btn" id="stkMinus" data-i18n-aria="stkMinusLabel">−</button>
-        <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
-        <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
-      </div>
-      <div class="stepper-label" data-i18n="davonFertig">Stück im laufenden Auftrag</div>
-
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-label" id="statDiffLabel" data-i18n="vorsprung">Vorsprung</div>
-          <div class="stat-value" id="statDiff">–</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label" data-i18n="verbleibend">Verbleibend (Soll)</div>
-          <div class="stat-value" id="statVerbleibend">–</div>
-        </div>
-      </div>
-      <div class="proj" id="projText"></div>
+      <div class="track-label" id="basisLabel">–</div>
     </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label for="start" data-i18n="start">Start</label>
+          <input type="time" id="start" value="05:48">
+        </div>
+        <div class="field">
+          <label for="stueckzeit" data-i18n="stueckzeitKurz">Stückzeit (min)</label>
+          <input type="text" id="stueckzeit" value="6.15" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
+        </div>
+      </div>
+      <div class="row" style="margin-top:4px;">
+        <div class="field">
+          <label for="stkAktuell" data-i18n="fertigeStk">Fertige Stück</label>
+          <div class="hero-stepper">
+            <button type="button" class="step-btn" id="stkMinus" data-i18n-aria="stkMinusLabel">−</button>
+            <input type="number" id="stkAktuell" value="0" min="0" inputmode="numeric">
+            <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="info-line" id="pauseInfo" style="margin-top:12px;"></div>
+      <div class="info-line" id="freitagInfo" style="display:none; color:var(--amber);"></div>
+    </div>
+
+  </div>
+
+  <!-- Alles Weitere: Schichtende, Auftragsumfang, Prognosen, Verlauf. -->
+  <div class="tab-panel" data-panel="details">
 
     <div class="card">
       <h2 data-i18n="schicht">Schicht</h2>
@@ -478,37 +484,46 @@
       </div>
       <div class="row">
         <div class="field">
-          <label for="start" data-i18n="start">Start</label>
-          <input type="time" id="start" value="05:48">
-        </div>
-        <div class="field">
           <label for="end" data-i18n="ende">Ende</label>
           <input type="time" id="end" value="14:00">
         </div>
+        <div class="field">
+          <label for="jetzt"><span data-i18n="uhrzeit">Uhrzeit</span> <span id="jetztAutoTag" style="color:var(--green);" data-i18n="laeuftMit">· läuft mit</span></label>
+          <input type="time" id="jetzt">
+        </div>
       </div>
-      <div class="info-line" id="freitagInfo" style="display:none; color:var(--amber);"></div>
-      <div class="info-line" id="pauseInfo"></div>
+      <div class="row" style="margin-top:8px;">
+        <button class="btn btn-ghost" id="jetztBtn" data-i18n="uhrzeitJetzt">Uhrzeit jetzt</button>
+      </div>
       <input type="hidden" id="pause" value="30">
       <input type="hidden" id="pausenbeginn" value="11:30">
     </div>
 
-    <div class="card">
-      <h2 data-i18n="stueckzeitTitel">Stückzeit</h2>
-      <div class="row">
-        <div class="field">
-          <label for="stueckzeit" data-i18n="minutenProStueck">Minuten pro Stück</label>
-          <input type="text" id="stueckzeit" value="6.15" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*">
+    <div class="hero">
+      <div class="hero-top">
+        <span class="hero-label" data-i18n="tagesfortschritt">Tagesfortschritt</span>
+      </div>
+      <div class="track">
+        <div class="fill" id="fillBar"></div>
+        <div class="marker-100"></div>
+      </div>
+      <div class="track-label" id="fortschrittLabel">–</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label" id="statDiffLabel" data-i18n="vorsprung">Vorsprung</div>
+          <div class="stat-value" id="statDiff">–</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label" data-i18n="verbleibend">Rest bis Tagessoll</div>
+          <div class="stat-value" id="statVerbleibend">–</div>
         </div>
       </div>
+      <div class="proj" id="projText"></div>
     </div>
 
     <div class="card">
       <h2 data-i18n="aktuellerAuftrag">Aktueller Auftrag</h2>
       <div class="row">
-        <div class="field">
-          <label for="jetzt"><span data-i18n="uhrzeit">Uhrzeit</span> <span id="jetztAutoTag" style="color:var(--green);" data-i18n="laeuftMit">· läuft mit</span></label>
-          <input type="time" id="jetzt">
-        </div>
         <div class="field">
           <label for="stkGesamt" data-i18n="auftragGesamt">Auftrag gesamt (Stk)</label>
           <input type="number" id="stkGesamt" value="0" min="0" inputmode="numeric">
@@ -516,7 +531,6 @@
       </div>
       <div class="offen-line" id="offenLine"></div>
       <div class="row btn-row" style="margin-top:12px;">
-        <button class="btn btn-ghost" id="jetztBtn" data-i18n="uhrzeitJetzt">Uhrzeit jetzt</button>
         <button class="btn btn-primary" id="fertigBtn" data-i18n="auftragFertig">Auftrag fertig ✓</button>
       </div>
       <div class="proj" id="auftragProjText"></div>
@@ -526,14 +540,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2 data-i18n="verlauf">Verlauf</h2>
-      <ul class="log-list" id="verlaufList"></ul>
-    </div>
-
-  </div>
-
-  <div class="tab-panel" data-panel="auftrag">
     <div class="card">
       <h2 data-i18n="auftragPlanen">Auftrag planen</h2>
       <div class="row">
@@ -547,10 +553,13 @@
         </div>
       </div>
       <div class="proj" id="planProjText"></div>
-      <div class="info-line" style="margin-top:10px;" data-i18n="planHinweis">
-        Beide Werte sind mit dem Tab „Schicht“ verknüpft – einmal eingeben genügt.
-      </div>
     </div>
+
+    <div class="card">
+      <h2 data-i18n="verlauf">Verlauf</h2>
+      <ul class="log-list" id="verlaufList"></ul>
+    </div>
+
   </div>
 
   <div class="tab-panel" data-panel="einstellungen">
@@ -646,7 +655,7 @@
 <script>
 // Bei jeder Veröffentlichung hochzählen – zusammen mit CACHE in
 // service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 const APP_DATUM = '15.08.2026';
 
 // ---------------------------------------------------------------------------
@@ -656,8 +665,8 @@ const APP_DATUM = '15.08.2026';
 const TEXTS = {
   de: {
     subtitle: 'Akkord im Blick',
-    tabSchicht: 'Schicht',
-    tabAuftrag: 'Auftrag',
+    tabAkkord: 'Akkord',
+    tabDetails: 'Details',
     tabEinstellungen: 'Einstellungen',
 
     schicht: 'Schicht',
@@ -671,7 +680,6 @@ const TEXTS = {
     uhrzeit: 'Uhrzeit',
     laeuftMit: '· läuft mit',
     auftragGesamt: 'Auftrag gesamt (Stk)',
-    davonFertig: 'Stück im laufenden Auftrag',
     stkPlusLabel: 'Ein Stück mehr',
     stkMinusLabel: 'Ein Stück weniger',
     uhrzeitJetzt: 'Uhrzeit jetzt',
@@ -679,7 +687,10 @@ const TEXTS = {
     heuteVerbucht: 'Heute verbucht:',
     letzteBuchung: '✕ letzte Buchung',
     leistungsgrad: 'Leistungsgrad',
-    seit: 'seit {start}',
+    tagesfortschritt: 'Tagesfortschritt',
+    stueckzeitKurz: 'Stückzeit (min)',
+    fertigeStk: 'Fertige Stück',
+    basis: '{gearbeitet} gearbeitet · {erarbeitet} erarbeitet',
     vorsprung: 'Vorsprung',
     rueckstand: 'Rückstand',
     fortschritt: '{erarbeitet} von {gesamt} erarbeitet · {pct}% vom Tagessoll',
@@ -689,7 +700,6 @@ const TEXTS = {
     auftragPlanen: 'Auftrag planen',
     gesamtstueckzahl: 'Gesamtstückzahl',
     stueckzeitMin: 'Stückzeit (min)',
-    planHinweis: 'Beide Werte sind mit dem Tab „Schicht“ verknüpft – einmal eingeben genügt.',
     sprache: 'Sprache',
     fruehschicht: 'Frühschicht',
     spaetschicht: 'Spätschicht',
@@ -755,8 +765,8 @@ const TEXTS = {
 
   cs: {
     subtitle: 'Výkon pod kontrolou',
-    tabSchicht: 'Směna',
-    tabAuftrag: 'Zakázka',
+    tabAkkord: 'Výkon',
+    tabDetails: 'Detaily',
     tabEinstellungen: 'Nastavení',
 
     schicht: 'Směna',
@@ -770,7 +780,6 @@ const TEXTS = {
     uhrzeit: 'Čas',
     laeuftMit: '· běží',
     auftragGesamt: 'Zakázka celkem (ks)',
-    davonFertig: 'Kusy v aktuální zakázce',
     stkPlusLabel: 'O kus více',
     stkMinusLabel: 'O kus méně',
     uhrzeitJetzt: 'Aktuální čas',
@@ -778,7 +787,10 @@ const TEXTS = {
     heuteVerbucht: 'Dnes zapsáno:',
     letzteBuchung: '✕ poslední zápis',
     leistungsgrad: 'Výkon',
-    seit: 'od {start}',
+    tagesfortschritt: 'Denní postup',
+    stueckzeitKurz: 'Čas na kus (min)',
+    fertigeStk: 'Hotové kusy',
+    basis: 'odpracováno {gearbeitet} · odvedeno {erarbeitet}',
     vorsprung: 'Náskok',
     rueckstand: 'Skluz',
     fortschritt: '{erarbeitet} z {gesamt} odvedeno · {pct} % denní normy',
@@ -788,7 +800,6 @@ const TEXTS = {
     auftragPlanen: 'Plánování zakázky',
     gesamtstueckzahl: 'Celkový počet kusů',
     stueckzeitMin: 'Čas na kus (min)',
-    planHinweis: 'Obě hodnoty jsou propojené se záložkou „Směna“ – stačí zadat jednou.',
     sprache: 'Jazyk',
     fruehschicht: 'Ranní směna',
     spaetschicht: 'Odpolední směna',
@@ -1017,6 +1028,18 @@ function detectSchicht(nowClock){
 function erbrachteVorgabezeit(stueckzeitAktuell, stkAktuell){
   const verbucht = log.reduce((s, e) => s + e.stk * (e.stueckzeit || stueckzeitAktuell), 0);
   return verbucht + stkAktuell * stueckzeitAktuell;
+}
+
+// Die Schicht, deren Beginn einer Uhrzeit am nächsten liegt.
+function naechsteSchicht(startMin){
+  let beste = null, abstandMin = Infinity;
+  for(const art of ['frueh','spaet']){
+    const s = toMinutes(SCHICHT_PRESETS[art].start);
+    if(s === null) continue;
+    const abstand = Math.abs(startMin - s);
+    if(abstand < abstandMin){ abstandMin = abstand; beste = art; }
+  }
+  return beste;
 }
 
 function nowMinutes(){
@@ -1345,6 +1368,10 @@ function calc(){
   const jetzt = toMinutes(els.jetzt.value);
   const pausenbeginn = toMinutes(els.pausenbeginn.value);
   const pausen = pausenListe(start, end);
+  // Wer über das Schichtende hinaus arbeitet, hatte auch die späteren Pausen.
+  const pausenBisJetzt = (jetzt !== null && end !== null && jetzt > end)
+    ? pausenListe(start, jetzt)
+    : pausen;
 
   updateOffHoursHint(start, end, jetzt);
   updatePauseInfo(pause, pausenbeginn, start, end);
@@ -1386,14 +1413,19 @@ function calc(){
 
   let rate = null; // Stk pro Arbeitsminute des laufenden Auftrags, für die Prognose
 
-  // Leistungsgrad, sobald "jetzt" in der Schicht liegt
-  if(jetzt !== null && jetzt > start && jetzt < end){
-    const elapsedWork = Math.max((jetzt - start) - pauseBis(pausen, jetzt), 0.01);
+  // Der Leistungsgrad braucht nur Start und aktuelle Uhrzeit – er gilt auch
+  // dann noch, wenn über das Schichtende hinaus gearbeitet wird.
+  if(jetzt !== null && jetzt > start){
+    const elapsedWork = Math.max((jetzt - start) - pauseBis(pausenBisJetzt, jetzt), 0.01);
 
     // Kern des Akkords: erarbeitete Vorgabezeit gegen tatsächlich verbrauchte Zeit
     const leistung = (erbracht / elapsedWork) * 100;
     setLeistungsgrad(leistung);
-    document.getElementById('heroSeit').textContent = t('seit', {start: els.start.value});
+    document.getElementById('heroJetzt').textContent = els.jetzt.value || '–';
+    document.getElementById('basisLabel').textContent = t('basis', {
+      gearbeitet: fmtMin(elapsedWork),
+      erarbeitet: fmtMin(erbracht)
+    });
 
     const diff = erbracht - elapsedWork; // Vorsprung (+) bzw. Rückstand (−) in Minuten
     const diffEl = document.getElementById('statDiff');
@@ -1415,7 +1447,8 @@ function calc(){
     });
   } else {
     setLeistungsgrad(null);
-    document.getElementById('heroSeit').textContent = '–';
+    document.getElementById('heroJetzt').textContent = els.jetzt.value || '–';
+    document.getElementById('basisLabel').textContent = jetzt === null ? '–' : t('projVorSchicht');
     document.getElementById('statDiff').textContent = '–';
     document.getElementById('statDiff').className = 'stat-value';
     document.getElementById('statDiffLabel').textContent = t('vorsprung');
@@ -1431,7 +1464,8 @@ function calc(){
 // Alles auf "–" zurücksetzen, wenn nicht gerechnet werden kann.
 function leereAnzeige(stueckzeitFehlt){
   setLeistungsgrad(null);
-  document.getElementById('heroSeit').textContent = '–';
+  document.getElementById('heroJetzt').textContent = els.jetzt.value || '–';
+  document.getElementById('basisLabel').textContent = stueckzeitFehlt ? t('stueckzeitFehlt') : '–';
   document.getElementById('fillBar').style.width = '0%';
   document.getElementById('fortschrittLabel').textContent = '–';
   document.getElementById('statDiff').textContent = '–';
@@ -1619,13 +1653,26 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>setLang(btn.dataset.lang));
 });
 
-// Manuelle Änderung an Start/Ende löst den Früh/Spät-Umschalter, da die Werte
-// dann nicht mehr zwingend einem der beiden Presets entsprechen.
-['start','end'].forEach(id => {
-  els[id].addEventListener('input', ()=>{
-    schichtart = null;
-    setActiveSchichtBtn(null);
-  });
+// Auf der Startseite ist die Startzeit die einzige Angabe zur Schicht. Sie
+// bestimmt deshalb, welche Pausenregelung gilt – sonst würde etwa eine
+// Frühschicht mit der Pause der Spätschicht gerechnet.
+els.start.addEventListener('input', ()=>{
+  const s = toMinutes(els.start.value);
+  if(s === null) return;
+  const art = naechsteSchicht(s);
+  if(!art) return;
+  const p = SCHICHT_PRESETS[art];
+  els.end.value = endeFuer(art);
+  els.pause.value = p.pause;
+  els.pausenbeginn.value = p.pausenbeginn;
+  schichtart = art;
+  setActiveSchichtBtn(art);
+});
+
+// Ein von Hand gesetztes Ende gehört zu keinem Preset mehr.
+els.end.addEventListener('input', ()=>{
+  schichtart = null;
+  setActiveSchichtBtn(null);
 });
 
 // Uhrzeit läuft von selbst mit; sobald sie von Hand geändert wird, bleibt sie stehen.
