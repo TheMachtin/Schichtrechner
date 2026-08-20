@@ -1,4 +1,4 @@
-const CACHE = 'takt-v10';
+const CACHE = 'takt-v11';
 const ASSETS = [
   './',
   './index.html',
