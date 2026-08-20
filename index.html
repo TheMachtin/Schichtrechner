@@ -352,6 +352,21 @@
   }
   .update-banner:hover{background:var(--green); color:#111;}
 
+  .verbucht-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    background:rgba(217,155,43,0.10);
+    border:1px solid var(--amber);
+    border-radius:6px;
+    padding:8px 10px;
+    margin-top:12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--amber);
+  }
+
   .heute-line{
     display:flex;
     justify-content:space-between;
@@ -466,6 +481,12 @@
             <button type="button" class="step-btn" id="stkPlus" data-i18n-aria="stkPlusLabel">+</button>
           </div>
         </div>
+      </div>
+      <!-- Erscheint nur, wenn ausser dem Feld oben noch verbuchte Aufträge
+           mitzählen - sonst wäre die grosse Zahl nicht nachvollziehbar. -->
+      <div class="verbucht-line" id="verbuchtLine" style="display:none;">
+        <span id="verbuchtText"></span>
+        <button class="undo-btn" id="tagResetBtn" data-i18n="tagZuruecksetzen">✕ zurücksetzen</button>
       </div>
       <div class="info-line" id="pauseInfo" style="margin-top:12px;"></div>
       <div class="info-line" id="freitagInfo" style="display:none; color:var(--amber);"></div>
@@ -655,7 +676,7 @@
 <script>
 // Bei jeder Veröffentlichung hochzählen – zusammen mit CACHE in
 // service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
-const APP_VERSION = '11';
+const APP_VERSION = '12';
 const APP_DATUM = '15.08.2026';
 
 // ---------------------------------------------------------------------------
@@ -691,6 +712,10 @@ const TEXTS = {
     stueckzeitKurz: 'Stückzeit (min)',
     fertigeStk: 'Fertige Stück',
     basis: '{gearbeitet} gearbeitet · {erarbeitet} erarbeitet',
+    verbuchtDazu: '+ {stk} Stk aus {n} verbuchten Aufträgen ({zeit})',
+    tagZuruecksetzen: '✕ zurücksetzen',
+    tagResetFrage: 'Die {n} heute verbuchten Aufträge ({stk} Stk) löschen? Die Zahl oben rechnet danach nur noch mit den eingetragenen Stück.',
+    tagZurueckgesetzt: 'Verbuchte Aufträge gelöscht.',
     vorsprung: 'Vorsprung',
     rueckstand: 'Rückstand',
     fortschritt: '{erarbeitet} von {gesamt} erarbeitet · {pct}% vom Tagessoll',
@@ -791,6 +816,10 @@ const TEXTS = {
     stueckzeitKurz: 'Čas na kus (min)',
     fertigeStk: 'Hotové kusy',
     basis: 'odpracováno {gearbeitet} · odvedeno {erarbeitet}',
+    verbuchtDazu: '+ {stk} ks z {n} zapsaných zakázek ({zeit})',
+    tagZuruecksetzen: '✕ vymazat',
+    tagResetFrage: 'Vymazat {n} dnes zapsaných zakázek ({stk} ks)? Číslo nahoře pak počítá jen se zadanými kusy.',
+    tagZurueckgesetzt: 'Zapsané zakázky vymazány.',
     vorsprung: 'Náskok',
     rueckstand: 'Skluz',
     fortschritt: '{erarbeitet} z {gesamt} odvedeno · {pct} % denní normy',
@@ -1073,6 +1102,7 @@ function applyLang(){
   document.getElementById('saveNote').textContent = t('speicherHinweis');
   document.getElementById('versionNote').textContent = t('version', {v: APP_VERSION, datum: APP_DATUM});
   renderHeute();
+  renderVerbucht();
   renderVerlauf();
   renderKurzpausen();
   calc();
@@ -1299,6 +1329,32 @@ function flashSaveNote(msg){
   }, 1800);
 }
 
+// Macht sichtbar, dass ausser dem Eingabefeld noch verbuchte Aufträge in die
+// grosse Zahl einfliessen.
+function renderVerbucht(){
+  const line = document.getElementById('verbuchtLine');
+  if(log.length === 0){
+    line.style.display = 'none';
+    return;
+  }
+  const vorgabe = log.reduce((s,e) => s + e.stk * (e.stueckzeit || 0), 0);
+  document.getElementById('verbuchtText').textContent =
+    t('verbuchtDazu', {stk: gesamtStk, n: log.length, zeit: fmtMin(vorgabe)});
+  line.style.display = 'flex';
+}
+
+function tagZuruecksetzen(){
+  if(log.length === 0) return;
+  if(!confirm(t('tagResetFrage', {stk: gesamtStk, n: log.length}))) return;
+  log = [];
+  gesamtStk = 0;
+  renderVerbucht();
+  renderHeute();
+  saveLog();
+  calc();
+  flashSaveNote(t('tagZurueckgesetzt'));
+}
+
 function renderHeute(){
   const line = document.getElementById('heuteLine');
   document.getElementById('heuteStk').textContent = t('heuteStk', {stk: gesamtStk});
@@ -1310,6 +1366,7 @@ function undoLetzte(){
   const letzte = log.pop();
   gesamtStk -= letzte.stk;
   renderHeute();
+  renderVerbucht();
   saveLog();
   calc();
   flashSaveNote(t('buchungEntfernt', {stk: letzte.stk}));
@@ -1352,6 +1409,7 @@ function auftragFertig(){
   els.stkGesamt.value = 0;
   syncPlanFromSchicht();
   renderHeute();
+  renderVerbucht();
   saveLog();
   setNowTime(); // aktualisiert Uhrzeit + rechnet neu
   flashSaveNote(t('auftragVerbucht', {stk}));
@@ -1637,6 +1695,7 @@ document.addEventListener('visibilitychange', ()=>{
 document.getElementById('jetztBtn').addEventListener('click', setNowTime);
 document.getElementById('fertigBtn').addEventListener('click', auftragFertig);
 document.getElementById('undoBtn').addEventListener('click', undoLetzte);
+document.getElementById('tagResetBtn').addEventListener('click', tagZuruecksetzen);
 document.getElementById('schichtFruehBtn').addEventListener('click', ()=>applySchicht('frueh'));
 document.getElementById('schichtSpaetBtn').addEventListener('click', ()=>applySchicht('spaet'));
 
