@@ -364,6 +364,55 @@
   }
   .update-banner:hover{background:var(--green); color:#111;}
 
+  .anleitung summary{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--text-dim);
+    font-weight:600;
+    cursor:pointer;
+    list-style:none;
+  }
+  .anleitung summary::-webkit-details-marker{display:none;}
+  .anleitung summary::after{content:' ▾'; color:var(--green);}
+  .anleitung[open] summary::after{content:' ▴';}
+  .anleitung[open] summary{margin-bottom:14px;}
+  .anleitung h3{
+    font-size:12px;
+    color:var(--green);
+    margin:18px 0 6px;
+    font-weight:600;
+  }
+  .anleitung h3:first-child{margin-top:0;}
+  .anleitung p, .anleitung li{
+    font-size:13px;
+    line-height:1.55;
+    color:var(--text-dim);
+    margin:0 0 8px;
+  }
+  .anleitung ul, .anleitung ol{margin:0 0 8px; padding-left:20px;}
+  .anleitung b{color:var(--text);}
+  .anleitung code{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--text);
+    background:#171a15;
+    border:1px solid var(--panel-edge);
+    border-radius:4px;
+    padding:1px 5px;
+  }
+  .anleitung .formel{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--text);
+    background:#171a15;
+    border:1px solid var(--panel-edge);
+    border-radius:6px;
+    padding:10px 12px;
+    margin:0 0 8px;
+    overflow-x:auto;
+  }
+
   .verbucht-line{
     display:flex;
     justify-content:space-between;
@@ -680,6 +729,11 @@
       </div>
     </div>
 
+    <details class="card anleitung" id="anleitung">
+      <summary data-i18n="anleitungTitel">Anleitung</summary>
+      <div data-i18n-html="anleitungText"></div>
+    </details>
+
     <div class="hint hint-info" data-i18n="einstellungenHinweis">
       Diese Zeiten steuern die automatische Früh-/Spät-Erkennung und den Umschalter im Tab „Schicht“.
     </div>
@@ -693,7 +747,7 @@
 <script>
 // Bei jeder Veröffentlichung hochzählen – zusammen mit CACHE in
 // service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const APP_DATUM = '17.08.2026';
 
 // ---------------------------------------------------------------------------
@@ -772,6 +826,8 @@ const TEXTS = {
     heuteStk: '{stk} Stk',
 
     speicherHinweis: 'Alle Eingaben werden automatisch gespeichert.',
+    anleitungTitel: 'Anleitung',
+    anleitungText: '<h3>In drei Schritten</h3><ol><li>Stückzeit des Auftrags eintragen</li><li>Fertige Stück eintippen oder mit <b>+</b> hochzählen</li><li>Prozentzahl ablesen</li></ol><p>Mehr ist im Normalfall nicht nötig. Start und Uhrzeit stellt die App selbst.</p><h3>Die Felder oben</h3><ul><li><b>Start</b> – wann du angefangen hast. Wird nach der Uhrzeit vorbelegt; ändere ihn, wenn du später eingestiegen bist. Er bestimmt auch, welche Pausen gelten.</li><li><b>Bis</b> – läuft mit der Uhr mit. Trag eine feste Zeit ein, um eine beendete Schicht nachzurechnen. Mit <b>· zurück auf jetzt</b> läuft die Uhr wieder.</li><li><b>Stückzeit</b> – die Vorgabezeit pro Stück. Komma und Punkt sind beide erlaubt.</li><li><b>Fertige Stück</b> – was du bisher geschafft hast.</li></ul><h3>Was die Farbe heißt</h3><p>Ab <b>100 %</b> grün, ab <b>90 %</b> gelb, darunter rot. 100 % heißt: genau in der Vorgabezeit gearbeitet.</p><h3>So wird gerechnet</h3><div class="formel">Leistungsgrad = Stück × Stückzeit ÷ gearbeitete Zeit × 100</div><p>Die gearbeitete Zeit ist <code>Bis − Start</code> abzüglich aller Pausen, die dazwischen liegen – Hauptpause und bezahlte Kurzpausen.</p><p>Beispiel: 05:48 bis 09:00 sind 192 Minuten, minus 5 Minuten Kurzpause bleiben 187. Bei 30 Stück à 6,15 min sind das 184,5 Minuten erarbeitet, also <b>98,7 %</b>.</p><h3>Eine beendete Schicht nachrechnen</h3><p>Start und <b>Bis</b> auf die tatsächlichen Zeiten setzen, Stückzahl eintragen, ablesen. Das geht auch am Abend noch.</p><h3>Mehrere Aufträge an einem Tag</h3><p>Nur nötig, wenn die Stückzeit wechselt. Im Reiter <b>Details</b> auf <b>Auftrag fertig ✓</b> tippen, dann die neue Stückzeit eintragen. Die verbuchten Stück behalten ihre eigene Vorgabezeit und zählen weiter mit.</p><p>Sie erscheinen dann als gelbe Zeile auf der Startseite. Stimmt etwas nicht, räumt <b>✕ zurücksetzen</b> die Buchungen des Tages weg – die eingetragene Stückzahl bleibt.</p><h3>Reiter Details</h3><p>Schichtende fürs Tagessoll, Tagesfortschritt, Vorsprung oder Rückstand, ob sich ein Auftrag noch ausgeht, und die Tage davor.</p><h3>Reiter Einstellungen</h3><p>Feste Zeiten für Früh- und Spätschicht samt verkürztem Freitag, die bezahlten Kurzpausen und die Sprache. Anhand dieser Zeiten erkennt die App selbst, welche Schicht gerade läuft.</p><h3>Speichern und Updates</h3><p>Jede Eingabe wird sofort gespeichert, auch wenn du die App schließt. Gibt es eine neue Version, erscheint oben ein grünes Band – erst ein Tipp darauf lädt sie, damit dir nichts mitten in der Arbeit wegspringt.</p>',
     version: 'TAKT {v} · {datum}',
     updateBereit: 'Neue Version verfügbar · tippen zum Laden',
     updateLaedt: 'Wird geladen …',
@@ -878,6 +934,8 @@ const TEXTS = {
     heuteStk: '{stk} ks',
 
     speicherHinweis: 'Všechny zadané hodnoty se ukládají automaticky.',
+    anleitungTitel: 'Návod',
+    anleitungText: '<h3>Ve třech krocích</h3><ol><li>Zadej čas na kus dané zakázky</li><li>Zapiš hotové kusy nebo je přidávej tlačítkem <b>+</b></li><li>Přečti si procenta</li></ol><p>Víc obvykle netřeba. Začátek a čas si aplikace nastaví sama.</p><h3>Pole nahoře</h3><ul><li><b>Začátek</b> – kdy jsi začal. Předvyplní se podle času; změň ho, pokud jsi nastoupil později. Určuje také, které přestávky platí.</li><li><b>Do</b> – běží podle hodin. Zadej pevný čas, když chceš dopočítat už skončenou směnu. Tlačítko <b>· zpět na teď</b> vrátí běžící čas.</li><li><b>Čas na kus</b> – normočas na jeden kus. Čárka i tečka fungují stejně.</li><li><b>Hotové kusy</b> – kolik jsi zatím udělal.</li></ul><h3>Co znamená barva</h3><p>Od <b>100 %</b> zeleně, od <b>90 %</b> žlutě, níže červeně. 100 % znamená: odpracováno přesně v normočase.</p><h3>Jak se to počítá</h3><div class="formel">Výkon = kusy × čas na kus ÷ odpracovaný čas × 100</div><p>Odpracovaný čas je <code>Do − Začátek</code> minus všechny přestávky, které mezi tím leží – hlavní i placené krátké.</p><p>Příklad: 05:48 až 09:00 je 192 minut, minus 5 minut krátké přestávky zbývá 187. Při 30 kusech po 6,15 min je odvedeno 184,5 minuty, tedy <b>98,7 %</b>.</p><h3>Dopočítání skončené směny</h3><p>Nastav Začátek a <b>Do</b> na skutečné časy, zadej počet kusů a přečti výsledek. Jde to i večer.</p><h3>Více zakázek za den</h3><p>Potřeba jen tehdy, když se mění čas na kus. V záložce <b>Detaily</b> klepni na <b>Zakázka hotová ✓</b> a pak zadej nový čas na kus. Zapsané kusy si podrží svůj vlastní normočas a počítají se dál.</p><p>Objeví se pak jako žlutý řádek na úvodní stránce. Pokud něco nesedí, <b>✕ vymazat</b> odstraní zápisy dne – zadaný počet kusů zůstane.</p><h3>Záložka Detaily</h3><p>Konec směny pro denní normu, denní postup, náskok nebo skluz, zda se zakázka ještě stihne, a předchozí dny.</p><h3>Záložka Nastavení</h3><p>Pevné časy ranní a odpolední směny včetně zkráceného pátku, placené krátké přestávky a jazyk. Podle těchto časů aplikace sama pozná, která směna právě běží.</p><h3>Ukládání a aktualizace</h3><p>Každý zápis se ukládá okamžitě, i když aplikaci zavřeš. Když je k dispozici nová verze, ukáže se nahoře zelený pruh – načte se až po klepnutí, aby ti nic neuteklo uprostřed práce.</p>',
     version: 'TAKT {v} · {datum}',
     updateBereit: 'K dispozici nová verze · klepnutím načtete',
     updateLaedt: 'Načítá se …',
@@ -1113,6 +1171,10 @@ function applyLang(){
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     el.textContent = t(el.dataset.i18n);
+  });
+  // Abschnitte, deren Text eigenes Markup enthält (Anleitung).
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{
+    el.innerHTML = t(el.dataset.i18nHtml);
   });
   document.querySelectorAll('[data-i18n-aria]').forEach(el=>{
     el.setAttribute('aria-label', t(el.dataset.i18nAria));
