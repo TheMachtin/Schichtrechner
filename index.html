@@ -747,7 +747,7 @@
 <script>
 // Bei jeder Veröffentlichung hochzählen – zusammen mit CACHE in
 // service-worker.js, sonst merkt der Browser nichts von der neuen Fassung.
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 const APP_DATUM = '17.08.2026';
 
 // ---------------------------------------------------------------------------
@@ -1140,6 +1140,15 @@ function erbrachteVorgabezeit(stueckzeitAktuell, stkAktuell){
 
 // Die Schicht, deren Beginn einer Uhrzeit am nächsten liegt.
 function naechsteSchicht(startMin){
+  // Zuerst: in welches Schichtfenster fällt die Startzeit? Wer um 10:15
+  // anfängt, ist verspätet in der Frühschicht - nicht früh in der Spätschicht.
+  for(const art of ['frueh','spaet']){
+    const s = toMinutes(SCHICHT_PRESETS[art].start);
+    const e = toMinutes(endeFuer(art));
+    if(s === null || e === null) continue;
+    if(startMin >= s && startMin < e) return art;
+  }
+  // Liegt sie ausserhalb beider Schichten, gilt der nächstgelegene Beginn.
   let beste = null, abstandMin = Infinity;
   for(const art of ['frueh','spaet']){
     const s = toMinutes(SCHICHT_PRESETS[art].start);
